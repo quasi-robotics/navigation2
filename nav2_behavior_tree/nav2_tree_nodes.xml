@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
   For instructions on using Groot and description of the following BehaviorTree nodes,
-  please refer to the groot_instructions.md and REAMDE.md respectively located in the 
+  please refer to the groot_instructions.md and REAMDE.md respectively located in the
   nav2_behavior_tree package.
 -->
 <root>
@@ -172,6 +172,12 @@
       <input_port name="seconds">Time to check if expired</input_port>
     </Condition>
 
+
+    <Condition ID="PathExpiringTimer">
+      <input_port name="seconds">Time to check if expired</input_port>
+      <input_port name="path">Check if path has been updated to enable timer reset</input_port>
+    </Condition>
+
     <Condition ID="InitialPoseReceived">
     </Condition>
 
@@ -214,6 +220,12 @@
       <input_port name="min_speed">Minimum speed</input_port>
       <input_port name="max_speed">Maximum speed</input_port>
       <input_port name="filter_duration">Duration (secs) for velocity smoothing filter</input_port>
+    </Decorator>
+
+    <Decorator ID="PathLongerOnApproach">
+      <input_port name="path">Planned Path</input_port>
+      <input_port name="prox_len">Proximity length (m) for the path to be longer on approach</input_port>
+      <input_port name="length_factor">Length multiplication factor to check if the path is significantly longer </input_port>
     </Decorator>
 
   </TreeNodesModel>
