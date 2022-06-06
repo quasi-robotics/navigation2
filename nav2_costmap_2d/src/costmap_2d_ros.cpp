@@ -51,6 +51,7 @@
 #include "tf2_ros/create_timer_ros.h"
 #include "nav2_util/robot_utils.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
+#include <rclcpp/version.h>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -141,10 +142,16 @@ Costmap2DROS::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   // Create the transform-related objects
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
+#if RCLCPP_VERSION_GTE(16,0,0)
   auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
     get_node_base_interface(),
     get_node_timers_interface(),
     callback_group_);
+#else
+  auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
+      get_node_base_interface(),
+      get_node_timers_interface());
+#endif
   tf_buffer_->setCreateTimerInterface(timer_interface);
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 

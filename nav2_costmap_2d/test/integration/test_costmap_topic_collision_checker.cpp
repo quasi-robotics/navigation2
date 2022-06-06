@@ -38,6 +38,7 @@
 #include "tf2/utils.h"
 #pragma GCC diagnostic pop
 #include "nav2_util/geometry_utils.hpp"
+#include <rclcpp/version.h>
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
@@ -109,10 +110,16 @@ public:
     callback_group_ = create_callback_group(
       rclcpp::CallbackGroupType::MutuallyExclusive, false);
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
+#if RCLCPP_VERSION_GTE(16,0,0)
     auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
       get_node_base_interface(),
       get_node_timers_interface(),
       callback_group_);
+#else
+    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
+        get_node_base_interface(),
+        get_node_timers_interface());
+#endif
     tf_buffer_->setCreateTimerInterface(timer_interface);
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
     tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());
