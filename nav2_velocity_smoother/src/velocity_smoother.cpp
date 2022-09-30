@@ -180,6 +180,8 @@ void VelocitySmoother::inputCommandCallback(const geometry_msgs::msg::Twist::Sha
 {
   command_ = msg;
   last_command_time_ = now();
+  new_command_received_ = true;
+  stopped_ = false;
 }
 
 double VelocitySmoother::findEtaConstraint(
@@ -222,10 +224,10 @@ void VelocitySmoother::smootherTimer()
       smoothed_cmd_pub_->publish(std::move(cmd_vel));
     }
     stopped_ = true;
-    return;
   }
 
-  stopped_ = false;
+  if (stopped_)
+    return;
 
   // Get current velocity based on feedback type
   geometry_msgs::msg::Twist current_;
@@ -240,9 +242,12 @@ void VelocitySmoother::smootherTimer()
   command_->linear.y = std::clamp(command_->linear.y, min_velocities_[1], max_velocities_[1]);
   command_->angular.z = std::clamp(command_->angular.z, min_velocities_[2], max_velocities_[2]);
 
-  // Check if target velocity is reached and we are in "stop when reached mode"
-  if (stop_when_reached_ && current_ == *command_)
-    return;
+  // Check if target velocity is reached and we are in "stop when reached" was requested
+  if (stop_when_reached_ && current_ == *command_) {
+    stopped_ = true;
+    if (!new_command_received_)
+      return;
+  }
 
   // Find if any component is not within the acceleration constraints. If so, store the most
   // significant scale factor to apply to the vector <dvx, dvy, dvw>, eta, to reduce all axes
@@ -290,6 +295,8 @@ void VelocitySmoother::smootherTimer()
   cmd_vel->angular.z = fabs(cmd_vel->angular.z) <
     deadband_velocities_[2] ? 0.0 : cmd_vel->angular.z;
   smoothed_cmd_pub_->publish(std::move(cmd_vel));
+
+  new_command_received_ = false;
 }
 
 rcl_interfaces::msg::SetParametersResult

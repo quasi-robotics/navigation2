@@ -144,6 +144,7 @@ protected:
   bool open_loop_;
   bool stopped_{true};
   bool scale_velocities_;
+  bool new_command_received_{false};
   std::vector<double> max_velocities_;
   std::vector<double> min_velocities_;
   std::vector<double> max_accels_;
