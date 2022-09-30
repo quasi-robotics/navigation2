@@ -151,6 +151,7 @@ protected:
   std::vector<double> deadband_velocities_;
   rclcpp::Duration velocity_timeout_{0, 0};
   rclcpp::Time last_command_time_;
+  bool stop_when_reached_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };

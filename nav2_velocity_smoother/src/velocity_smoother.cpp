@@ -94,6 +94,10 @@ VelocitySmoother::on_configure(const rclcpp_lifecycle::State &)
   node->get_parameter("velocity_timeout", velocity_timeout_dbl);
   velocity_timeout_ = rclcpp::Duration::from_seconds(velocity_timeout_dbl);
 
+  declare_parameter_if_not_declared(node, "stop_when_reached", rclcpp::ParameterValue(false));
+  node->get_parameter("stop_when_reached", stop_when_reached_);
+
+
   if (max_velocities_.size() != 3 || min_velocities_.size() != 3 ||
     max_accels_.size() != 3 || max_decels_.size() != 3 || deadband_velocities_.size() != 3)
   {
@@ -235,6 +239,10 @@ void VelocitySmoother::smootherTimer()
   command_->linear.x = std::clamp(command_->linear.x, min_velocities_[0], max_velocities_[0]);
   command_->linear.y = std::clamp(command_->linear.y, min_velocities_[1], max_velocities_[1]);
   command_->angular.z = std::clamp(command_->angular.z, min_velocities_[2], max_velocities_[2]);
+
+  // Check if target velocity is reached and we are in "stop when reached mode"
+  if (stop_when_reached_ && current_ == command_)
+    return;
 
   // Find if any component is not within the acceleration constraints. If so, store the most
   // significant scale factor to apply to the vector <dvx, dvy, dvw>, eta, to reduce all axes
