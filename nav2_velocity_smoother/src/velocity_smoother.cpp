@@ -241,7 +241,7 @@ void VelocitySmoother::smootherTimer()
   command_->angular.z = std::clamp(command_->angular.z, min_velocities_[2], max_velocities_[2]);
 
   // Check if target velocity is reached and we are in "stop when reached mode"
-  if (stop_when_reached_ && current_ == command_)
+  if (stop_when_reached_ && current_ == *command_)
     return;
 
   // Find if any component is not within the acceleration constraints. If so, store the most
