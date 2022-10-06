@@ -243,7 +243,7 @@ void VelocitySmoother::smootherTimer()
   command_->angular.z = std::clamp(command_->angular.z, min_velocities_[2], max_velocities_[2]);
 
   // Check if target velocity is reached and we are in "stop when reached" was requested
-  if (stop_when_reached_ && current_ == *command_) {
+  if (stop_when_reached_ && current_ == *command_ && current_ == geometry_msgs::msg::Twist()) {
     stopped_ = true;
     if (!new_command_received_)
       return;
