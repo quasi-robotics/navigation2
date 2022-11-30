@@ -24,7 +24,7 @@
 #include "pluginlib/class_list_macros.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "geometry_msgs/msg/pose2_d.hpp"
-#include "nav2_core/exceptions.hpp"
+#include "nav2_core/planner_exceptions.hpp"
 #include "angles/angles.h"
 
 namespace nav2_shim_controller
