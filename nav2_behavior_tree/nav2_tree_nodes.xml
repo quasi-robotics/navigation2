@@ -77,6 +77,7 @@
       <input_port name="service_name">Service name</input_port>
       <input_port name="server_timeout">Server timeout</input_port>
       <output_port name="path">Path created by ComputePathToPose node</output_port>
+      <output_port name="error_code_id">"Compute path to pose error code"</output_port>
     </Action>
 
     <Action ID="ComputePathThroughPoses">
@@ -86,6 +87,7 @@
       <input_port name="server_timeout">Server timeout</input_port>
       <input_port name="planner_id">Mapped name to the planner plugin type to use</input_port>
       <output_port name="path">Path created by ComputePathToPose node</output_port>
+      <output_port name="error_code_id">"Compute path through poses error code"</output_port>
     </Action>
 
     <Action ID="RemovePassedGoals">
@@ -112,6 +114,7 @@
       <input_port name="goal_checker_id" default="GoalChecker">Goal checker</input_port>
       <input_port name="service_name">Service name</input_port>
       <input_port name="server_timeout">Server timeout</input_port>
+      <output_port name="error_code_id">Follow Path error code</output_port>
     </Action>
 
     <Action ID="NavigateToPose">
@@ -119,6 +122,7 @@
         <input_port name="service_name">Service name</input_port>
         <input_port name="server_timeout">Server timeout</input_port>
         <input_port name="behavior_tree">Behavior tree to run</input_port>
+        <output_port name="error_code_id">Navigate to pose error code</output_port>
     </Action>
 
     <Action ID="NavigateThroughPoses">
@@ -126,6 +130,7 @@
         <input_port name="service_name">Service name</input_port>
         <input_port name="server_timeout">Server timeout</input_port>
         <input_port name="behavior_tree">Behavior tree to run</input_port>
+        <output_port name="error_code_id">Navigate through poses error code</output_port>
     </Action>
 
     <Action ID="ReinitializeGlobalLocalization">
@@ -160,6 +165,12 @@
         <input_port name="topic_name">Name of the topic to receive controller selection commands</input_port>
         <input_port name="default_controller">Default controller of the controller selector</input_port>
         <output_port name="selected_controller">Name of the selected controller received from the topic subcription</output_port>
+    </Action>
+
+    <Action ID="SmootherSelector">
+        <input_port name="topic_name">Name of the topic to receive smoother selection commands</input_port>
+        <input_port name="default_smoother">Default smoother of the smoother selector</input_port>
+        <output_port name="selected_smoother">Name of the selected smoother received from the topic subcription</output_port>
     </Action>
 
     <Action ID="GoalCheckerSelector">

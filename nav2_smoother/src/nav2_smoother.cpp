@@ -1,5 +1,6 @@
 // Copyright (c) 2019 RoboTech Vision
 // Copyright (c) 2019 Intel Corporation
+// Copyright (c) 2022 Samsung Research America
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +15,13 @@
 // limitations under the License.
 
 #include <chrono>
-#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "nav2_core/exceptions.hpp"
+#include "nav2_core/planner_exceptions.hpp"
 #include "nav2_smoother/nav2_smoother.hpp"
-#include "nav2_util/geometry_utils.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "nav_2d_utils/conversions.hpp"
 #include "nav_2d_utils/tf_help.hpp"
