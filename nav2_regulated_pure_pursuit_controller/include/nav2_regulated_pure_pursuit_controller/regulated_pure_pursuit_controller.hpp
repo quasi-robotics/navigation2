@@ -111,6 +111,12 @@ public:
    */
   void setSpeedLimit(const double & speed_limit, const bool & percentage) override;
 
+  /**
+   * @brief Reset the state of the controller if necessary after task is exited
+   */
+  virtual void reset() override;
+
+
 protected:
   /**
    * @brief Get lookahead distance

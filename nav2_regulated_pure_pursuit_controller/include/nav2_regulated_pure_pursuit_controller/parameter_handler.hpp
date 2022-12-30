@@ -57,6 +57,7 @@ struct Parameters
   bool use_interpolation;
   bool use_collision_detection;
   double transform_tolerance;
+  double desired_goal_distance;
 };
 
 /**

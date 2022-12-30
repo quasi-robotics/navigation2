@@ -66,7 +66,7 @@ void RegulatedPurePursuitController::configure(
   collision_checker_ = std::make_unique<CollisionChecker>(node, costmap_ros_, params_);
 
   double control_frequency = 20.0;
-  goal_dist_tol_ = 0.25;  // reasonable default before first update
+  goal_dist_tol_ = params_->desired_goal_distance; //0.25;  // reasonable default before first update
 
   node->get_parameter("controller_frequency", control_frequency);
   control_duration_ = 1.0 / control_frequency;
@@ -147,7 +147,8 @@ geometry_msgs::msg::TwistStamped RegulatedPurePursuitController::computeVelocity
   if (!goal_checker->getTolerances(pose_tolerance, vel_tolerance)) {
     RCLCPP_WARN(logger_, "Unable to retrieve goal checker's tolerances!");
   } else {
-    goal_dist_tol_ = pose_tolerance.position.x;
+    if(!std::isfinite(goal_dist_tol_))
+      goal_dist_tol_ = pose_tolerance.position.x;
   }
 
   // Transform path to robot base frame
@@ -200,8 +201,10 @@ geometry_msgs::msg::TwistStamped RegulatedPurePursuitController::computeVelocity
   if (shouldRotateToGoalHeading(carrot_pose)) {
     double angle_to_goal = tf2::getYaw(transformed_plan.poses.back().pose.orientation);
     rotateToHeading(linear_vel, angular_vel, angle_to_goal, speed);
+    goal_dist_tol_ = pose_tolerance.position.x;
   } else if (shouldRotateToPath(carrot_pose, angle_to_heading)) {
     rotateToHeading(linear_vel, angular_vel, angle_to_heading, speed);
+    goal_dist_tol_ = params_->desired_goal_distance;
   } else {
     applyConstraints(
       curvature, speed,
@@ -242,6 +245,7 @@ bool RegulatedPurePursuitController::shouldRotateToGoalHeading(
 {
   // Whether we should rotate robot to goal heading
   double dist_to_goal = std::hypot(carrot_pose.pose.position.x, carrot_pose.pose.position.y);
+  RCLCPP_INFO(logger_, "should rotate to goal heading - dist_to_goal: %f, goal_dist_tol: %f", dist_to_goal,  goal_dist_tol_);
   return params_->use_rotate_to_heading && dist_to_goal < goal_dist_tol_;
 }
 
@@ -357,6 +361,10 @@ void RegulatedPurePursuitController::applyConstraints(
   // Limit linear velocities to be valid
   linear_vel = std::clamp(fabs(linear_vel), 0.0, params_->desired_linear_vel);
   linear_vel = sign * linear_vel;
+}
+
+void RegulatedPurePursuitController::reset() {
+  goal_dist_tol_ = params_->desired_goal_distance;
 }
 
 void RegulatedPurePursuitController::setPlan(const nav_msgs::msg::Path & path)

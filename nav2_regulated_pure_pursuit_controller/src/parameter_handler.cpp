@@ -92,6 +92,9 @@ ParameterHandler::ParameterHandler(
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".use_collision_detection",
     rclcpp::ParameterValue(true));
+  declare_parameter_if_not_declared(
+      node, plugin_name_ + ".desired_goal_distance",
+      rclcpp::ParameterValue(std::numeric_limits<double>::quiet_NaN()));
 
   node->get_parameter(plugin_name_ + ".desired_linear_vel", params_.desired_linear_vel);
   params_.base_desired_linear_vel = params_.desired_linear_vel;
@@ -151,6 +154,9 @@ ParameterHandler::ParameterHandler(
   node->get_parameter(
     plugin_name_ + ".use_collision_detection",
     params_.use_collision_detection);
+  node->get_parameter(
+      plugin_name_ + ".desired_goal_distance",
+      params_.desired_goal_distance);
 
   if (params_.inflation_cost_scaling_factor <= 0.0) {
     RCLCPP_WARN(
@@ -224,6 +230,8 @@ ParameterHandler::dynamicParametersCallback(
         params_.max_angular_accel = parameter.as_double();
       } else if (name == plugin_name_ + ".rotate_to_heading_min_angle") {
         params_.rotate_to_heading_min_angle = parameter.as_double();
+      } else if (name == plugin_name_ + ".desired_goal_distance") {
+        params_.desired_goal_distance = parameter.as_double();
       }
     } else if (type == ParameterType::PARAMETER_BOOL) {
       if (name == plugin_name_ + ".use_velocity_scaled_lookahead_dist") {
