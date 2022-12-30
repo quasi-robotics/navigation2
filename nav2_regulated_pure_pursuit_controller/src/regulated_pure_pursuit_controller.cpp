@@ -245,7 +245,7 @@ bool RegulatedPurePursuitController::shouldRotateToGoalHeading(
 {
   // Whether we should rotate robot to goal heading
   double dist_to_goal = std::hypot(carrot_pose.pose.position.x, carrot_pose.pose.position.y);
-  RCLCPP_INFO(logger_, "should rotate to goal heading - dist_to_goal: %f, goal_dist_tol: %f", dist_to_goal,  goal_dist_tol_);
+  RCLCPP_DEBUG(logger_, "should rotate to goal heading - dist_to_goal: %f, goal_dist_tol: %f", dist_to_goal,  goal_dist_tol_);
   return params_->use_rotate_to_heading && dist_to_goal < goal_dist_tol_;
 }
 
