@@ -82,10 +82,11 @@ bool Range::getData(
 
   // Ignore data, if its range is out of scope of range sensor abilities
   if (data_->range < data_->min_range || data_->range > data_->max_range) {
-    RCLCPP_DEBUG(
-      logger_,
-      "[%s]: Data range %fm is out of {%f..%f} sensor span. Ignoring...",
-      source_name_.c_str(), data_->range, data_->min_range, data_->max_range);
+    if (std::isfinite(data_->range)) // +/-INF and NaNs are not an error, no need to spam in logs
+      RCLCPP_DEBUG(
+        logger_,
+        "[%s]: Data range %fm is out of {%f..%f} sensor span. Ignoring...",
+        source_name_.c_str(), data_->range, data_->min_range, data_->max_range);
     return false;
   }
 
