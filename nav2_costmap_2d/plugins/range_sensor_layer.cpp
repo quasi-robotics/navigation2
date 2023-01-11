@@ -267,16 +267,20 @@ void RangeSensorLayer::processFixedRangeMsg(sensor_msgs::msg::Range & range_mess
 
 void RangeSensorLayer::processVariableRangeMsg(sensor_msgs::msg::Range & range_message)
 {
-  if (range_message.range < range_message.min_range || range_message.range >
-    range_message.max_range)
-  {
+  if (std::isnan(range_message.range)) {
     return;
+  }
+  if (range_message.range < range_message.min_range) {
+    range_message.range = range_message.min_range;      // do not ignore readings closer than min, including -INF, just treat them as min
   }
 
   bool clear_sensor_cone = false;
 
   if (range_message.range >= range_message.max_range && clear_on_max_reading_) {
     clear_sensor_cone = true;
+  }
+  else if (range_message.range > range_message.max_range) {  // ignore readings over max if not clearing
+    return;
   }
 
   updateCostmap(range_message, clear_sensor_cone);
