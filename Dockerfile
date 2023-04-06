@@ -105,6 +105,20 @@ RUN . $UNDERLAY_WS/install/setup.sh && \
       --ignore-src \
     && rm -rf /var/lib/apt/lists/*
 
+# multi-stage for developing
+FROM builder AS dever
+
+# edit apt for caching
+RUN mv /etc/apt/apt.conf.d/docker-clean /etc/apt/
+
+# install developer dependencies
+RUN apt-get update && \
+    apt-get install -y \
+      bash-completion
+
+# source underlay for shell
+RUN echo 'source "$UNDERLAY_WS/install/setup.bash"' >> /etc/bash.bashrc
+
 # multi-stage for testing
 FROM builder AS tester
 
@@ -125,7 +139,7 @@ RUN sed --in-place \
 
 # test overlay build
 ARG RUN_TESTS
-ARG FAIL_ON_TEST_FAILURE=True
+ARG FAIL_ON_TEST_FAILURE
 RUN if [ -n "$RUN_TESTS" ]; then \
         . install/setup.sh && \
         colcon test && \
