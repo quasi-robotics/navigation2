@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(nav2_msgs)
 
+# Disable Wredundant-decls warnings since rosidl generates redundant function declarations
+add_compile_options(-Wno-redundant-decls)
+
+
 find_package(ament_cmake REQUIRED)
 find_package(nav2_common REQUIRED)
 find_package(builtin_interfaces REQUIRED)
