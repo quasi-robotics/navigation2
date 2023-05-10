@@ -45,6 +45,7 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
   declare_parameter("service_timeout", 5.0);
   declare_parameter("bond_respawn_max_duration", 10.0);
   declare_parameter("attempt_respawn_reconnection", true);
+  subsystem_name_ = declare_parameter("subsystem_name", "Nav2");
 
   registerRclPreshutdownCallback();
 
@@ -101,7 +102,7 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
       executor->add_callback_group(callback_group_, get_node_base_interface());
       service_thread_ = std::make_unique<nav2_util::NodeThread>(executor);
     });
-  diagnostics_updater_.setHardwareID("Nav2");
+  diagnostics_updater_.setHardwareID(subsystem_name_);
   diagnostics_updater_.add("Nav2 Health", this, &LifecycleManager::CreateDiagnostic);
 }
 
@@ -165,23 +166,23 @@ LifecycleManager::CreateDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &
   switch (managed_nodes_state_) {
     case NodeState::ACTIVE:
       error_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      message = "Managed nodes are active";
+      message = subsystem_name_ + " managed nodes are active";
       break;
     case NodeState::INACTIVE:
       error_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      message = "Managed nodes are inactive";
+      message = subsystem_name_ + " managed nodes are inactive";
       break;
     case NodeState::UNCONFIGURED:
       error_level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      message = "Managed nodes are unconfigured";
+      message = subsystem_name_ + " managed nodes are unconfigured";
       break;
     case NodeState::FINALIZED:
       error_level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-      message = "Managed nodes have been shut down";
+      message = subsystem_name_ + " managed nodes have been shut down";
       break;
     default:  // NodeState::UNKNOWN
       error_level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-      message = "An error has occurred during a node state transition";
+      message = subsystem_name_ + ": An error has occurred during a node state transition";
       break;
   }
   stat.summary(error_level, message);
