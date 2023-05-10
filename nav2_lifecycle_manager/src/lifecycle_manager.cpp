@@ -44,6 +44,7 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
   declare_parameter("bond_timeout", 4.0);
   declare_parameter("bond_respawn_max_duration", 10.0);
   declare_parameter("attempt_respawn_reconnection", true);
+  subsystem_name_ = declare_parameter("subsystem_name", "Nav2");
 
   registerRclPreshutdownCallback();
 
@@ -105,8 +106,8 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
       executor->add_callback_group(callback_group_, get_node_base_interface());
       service_thread_ = std::make_unique<nav2_util::NodeThread>(executor);
     });
-  diagnostics_updater_.setHardwareID("Nav2");
-  diagnostics_updater_.add("Nav2 Health", this, &LifecycleManager::CreateActiveDiagnostic);
+  diagnostics_updater_.setHardwareID(subsystem_name_);
+  diagnostics_updater_.add(subsystem_name_ + " Health", this, &LifecycleManager::CreateActiveDiagnostic);
 }
 
 LifecycleManager::~LifecycleManager()
@@ -153,9 +154,9 @@ void
 LifecycleManager::CreateActiveDiagnostic(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
   if (system_active_) {
-    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "Nav2 is active");
+    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, subsystem_name_ + " is active");
   } else {
-    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::ERROR, "Nav2 is inactive");
+    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::ERROR, subsystem_name_ + " is inactive");
   }
 }
 

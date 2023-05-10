@@ -69,12 +69,13 @@ def generate_launch_description():
     start_lifecycle_manager_cmd = Node(
             package='nav2_lifecycle_manager',
             executable='lifecycle_manager',
-            name='lifecycle_manager',
+            name='lifecycle_manager_collision_monitor',
             output='screen',
             emulate_tty=True,  # https://github.com/ros2/launch/issues/188
             parameters=[{'use_sim_time': use_sim_time},
                         {'autostart': autostart},
-                        {'node_names': lifecycle_nodes}])
+                        {'node_names': lifecycle_nodes},
+                        {'subsystem_name': 'Collision Monitor'}])
 
     start_collision_monitor_cmd = Node(
             package='nav2_collision_monitor',

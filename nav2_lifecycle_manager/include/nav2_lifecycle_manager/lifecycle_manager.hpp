@@ -221,6 +221,9 @@ protected:
   // The names of the nodes to be managed, in the order of desired bring-up
   std::vector<std::string> node_names_;
 
+  // Name of controlled subsystem
+  std::string subsystem_name_;
+
   // Whether to automatically start up the system
   bool autostart_;
   bool attempt_respawn_reconnection_;
