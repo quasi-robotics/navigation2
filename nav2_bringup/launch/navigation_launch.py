@@ -56,7 +56,11 @@ def generate_launch_description() -> LaunchDescription:
     remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
 
     # Create our own temporary YAML files that include substitutions
-    param_substitutions = {'autostart': autostart}
+    param_substitutions = {
+        'autostart': autostart,
+        'default_nav_to_pose_bt_xml': LaunchConfiguration('default_nav_to_pose_bt_xml'),
+        'default_nav_through_poses_bt_xml': LaunchConfiguration('default_nav_through_poses_bt_xml')
+    }
 
     configured_params = ParameterFile(
         RewrittenYaml(
@@ -120,6 +124,14 @@ def generate_launch_description() -> LaunchDescription:
     declare_log_level_cmd = DeclareLaunchArgument(
         'log_level', default_value='info', description='log level'
     )
+
+    declare_default_nav_to_pose_bt_xml_cmd = DeclareLaunchArgument(
+        'default_nav_to_pose_bt_xml', default_value=os.path.join(get_package_share_directory('nav2_bt_navigator'), 'behavior_trees', 'navigate_to_pose_w_replanning_and_recovery.xml'),
+        description='Default behavior tree to use for Navigate To Pose action')
+
+    declare_default_nav_through_poses_bt_xml_cmd = DeclareLaunchArgument(
+        'default_nav_through_poses_bt_xml', default_value=os.path.join(get_package_share_directory('nav2_bt_navigator'), 'behavior_trees', 'navigate_through_poses_w_replanning_and_recovery.xml'),
+        description='Default behavior tree to use for Navigate Through Poses action')
 
     load_nodes = GroupAction(
         condition=UnlessCondition(use_composition),
@@ -349,6 +361,8 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_default_nav_to_pose_bt_xml_cmd)
+    ld.add_action(declare_default_nav_through_poses_bt_xml_cmd)
     # Add the actions to launch all of the navigation nodes
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
