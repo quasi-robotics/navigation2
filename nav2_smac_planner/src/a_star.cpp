@@ -207,12 +207,12 @@ bool AStarAlgorithm<NodeT>::areInputsValid()
   if (getToleranceHeuristic() < 0.001 &&
     !_goal->isNodeValid(_traverse_unknown, _collision_checker))
   {
-    throw nav2_core::GoalOccupied("Goal was in lethal cost");
+    throw nav2_core::GoalOccupied(std::string("Goal was in lethal cost, tolerance: ") + std::to_string(getToleranceHeuristic()) + ", cost: " + std::to_string(_goal->getCost()));
   }
 
   // Check if starting point is valid
   if (!_start->isNodeValid(_traverse_unknown, _collision_checker)) {
-    throw nav2_core::StartOccupied("Start was in lethal cost");
+    throw nav2_core::StartOccupied("Start was in lethal cost, cost: " + std::to_string(_goal->getCost()));
   }
 
   return true;
