@@ -146,7 +146,7 @@ ResultStatus Spin::onCycleUpdate()
   pose2d.y = current_pose.pose.position.y;
   pose2d.theta = tf2::getYaw(current_pose.pose.orientation);
 
-  if (!isCollisionFree(relative_yaw_, cmd_vel.get(), pose2d)) {
+  if (!isCollisionFree(remaining_yaw, cmd_vel.get(), pose2d)) {
     stopRobot();
     RCLCPP_WARN(logger_, "Collision Ahead - Exiting Spin");
     return ResultStatus{Status::FAILED, SpinActionGoal::COLLISION_AHEAD};
@@ -168,6 +168,7 @@ bool Spin::isCollisionFree(
   const int max_cycle_count = static_cast<int>(cycle_frequency_ * simulate_ahead_time_);
   geometry_msgs::msg::Pose2D init_pose = pose2d;
   bool fetch_data = true;
+  RCLCPP_DEBUG(logger_, "cycle_freq: %f, sim ahead: %f, max count: %i", cycle_frequency_, simulate_ahead_time_, max_cycle_count);
 
   while (cycle_count < max_cycle_count) {
     sim_position_change = cmd_vel->angular.z * (cycle_count / cycle_frequency_);
@@ -175,14 +176,22 @@ bool Spin::isCollisionFree(
     cycle_count++;
 
     if (abs(relative_yaw) - abs(sim_position_change) <= 0.) {
+      RCLCPP_DEBUG(logger_, "skipping coll check. rel yaw: %.3f, sim pos ch: %.3f", relative_yaw, sim_position_change);
       break;
     }
+
+    if (abs(sim_position_change) == 0.0)
+      continue;
 
     if (!local_collision_checker_->isCollisionFree(pose2d, fetch_data)) {
       return false;
     }
     fetch_data = false;
   }
+  RCLCPP_DEBUG(logger_, "No coll %i cyc. ryaw:%.3f, cvz:%.3f, cur x:%.3f, y:%.3f, z:%.3f, proj x:%.3f, y:%.3f, z:%.3f", 
+               cycle_count, relative_yaw, cmd_vel->angular.z,
+               init_pose.x, init_pose.y, init_pose.theta, 
+               pose2d.x, pose2d.y, pose2d.theta );
   return true;
 }
 

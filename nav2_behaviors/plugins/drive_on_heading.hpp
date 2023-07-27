@@ -172,6 +172,7 @@ protected:
     const int max_cycle_count = static_cast<int>(this->cycle_frequency_ * simulate_ahead_time_);
     geometry_msgs::msg::Pose2D init_pose = pose2d;
     bool fetch_data = true;
+    RCLCPP_DEBUG(this->logger_, "cycle_freq: %f, sim ahead: %f, max count: %i", this->cycle_frequency_, simulate_ahead_time_, max_cycle_count);
 
     while (cycle_count < max_cycle_count) {
       sim_position_change = cmd_vel->linear.x * (cycle_count / this->cycle_frequency_);
@@ -179,15 +180,28 @@ protected:
       pose2d.y = init_pose.y + sim_position_change * sin(init_pose.theta);
       cycle_count++;
 
+      // RCLCPP_DEBUG(this->logger_, "cc %i cyc. cur x:%.3f, y:%.3f, z:%.3f, proj x:%.3f, y:%.3f, z:%.3f", 
+      //             cycle_count, 
+      //             init_pose.x, init_pose.y, init_pose.theta, 
+      //             pose2d.x, pose2d.y, pose2d.theta );
       if (diff_dist - abs(sim_position_change) <= 0.) {
+        RCLCPP_DEBUG(this->logger_, "skipping coll check. diff_dist: %.3f, sim pos ch: %.3f", diff_dist, sim_position_change);
         break;
       }
 
+      if (abs(sim_position_change) == 0.0)
+        continue;
+
       if (!this->local_collision_checker_->isCollisionFree(pose2d, fetch_data)) {
+        RCLCPP_DEBUG(this->logger_, "coll detected at iter %i, sim pos ch: %.3f", cycle_count, sim_position_change);
         return false;
       }
       fetch_data = false;
     }
+    RCLCPP_DEBUG(this->logger_, "No coll %i cyc. ddist:%.3f, cvz:%.3f, cur x:%.3f, y:%.3f, z:%.3f, proj x:%.3f, y:%.3f, z:%.3f", 
+                cycle_count, diff_dist, cmd_vel->linear.x,
+                init_pose.x, init_pose.y, init_pose.theta, 
+                pose2d.x, pose2d.y, pose2d.theta );
     return true;
   }
 
