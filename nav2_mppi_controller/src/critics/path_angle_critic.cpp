@@ -78,9 +78,16 @@ void PathAngleCritic::score(CriticData & data)
   const float goal_yaw = xt::view(data.path.yaws, offseted_idx);
   const geometry_msgs::msg::Pose & pose = data.state.pose.pose;
 
+  auto dx = data.state.pose.pose.position.x - data.path.x(data.path.x.shape(0) - 1);
+  auto dy = data.state.pose.pose.position.y - data.path.y(data.path.y.shape(0) - 1);
+  auto dist_sq = dx * dx + dy * dy;
+  auto circum_radius = costmap_ros_->getLayeredCostmap()->getCircumscribedRadius();
+  bool within_two_curcumscribed_radiuses_to_goal = dist_sq <= circum_radius * circum_radius * 4.0;
+  //RCLCPP_DEBUG(logger_, "dist_sq: %f, circum_sq: %f, within: %i", dist_sq, circum_radius * circum_radius * 4.0, within_two_curcumscribed_radiuses_to_goal ? 1 : 0);
+
   switch (mode_) {
     case PathAngleMode::FORWARD_PREFERENCE:
-      if (utils::posePointAngle(pose, goal_x, goal_y, true) < max_angle_to_furthest_) {
+      if (utils::posePointAngle(pose, goal_x, goal_y, !within_two_curcumscribed_radiuses_to_goal) < max_angle_to_furthest_) {
         return;
       }
       break;
@@ -105,31 +112,27 @@ void PathAngleCritic::score(CriticData & data)
   auto yaws =
     xt::abs(utils::shortest_angular_distance(data.trajectories.yaws, yaws_between_points));
 
-  switch (mode_) {
-    case PathAngleMode::FORWARD_PREFERENCE:
-      {
-        data.costs += xt::pow(xt::mean(yaws, {1}, immediate) * weight_, power_);
-        return;
-      }
-    case PathAngleMode::NO_DIRECTIONAL_PREFERENCE:
-      {
-        const auto yaws_between_points_corrected = xt::where(
-          yaws < M_PI_2, yaws_between_points, utils::normalize_angles(yaws_between_points + M_PI));
-        const auto corrected_yaws = xt::abs(
-          utils::shortest_angular_distance(data.trajectories.yaws, yaws_between_points_corrected));
-        data.costs += xt::pow(xt::mean(corrected_yaws, {1}, immediate) * weight_, power_);
-        return;
-      }
-    case PathAngleMode::CONSIDER_FEASIBLE_PATH_ORIENTATIONS:
-      {
-        const auto yaws_between_points_corrected = xt::where(
-          xt::abs(utils::shortest_angular_distance(yaws_between_points, goal_yaw)) < M_PI_2,
-          yaws_between_points, utils::normalize_angles(yaws_between_points + M_PI));
-        const auto corrected_yaws = xt::abs(
-          utils::shortest_angular_distance(data.trajectories.yaws, yaws_between_points_corrected));
-        data.costs += xt::pow(xt::mean(corrected_yaws, {1}, immediate) * weight_, power_);
-        return;
-      }
+  if(mode_ == PathAngleMode::NO_DIRECTIONAL_PREFERENCE ||
+    (mode_ == PathAngleMode::FORWARD_PREFERENCE && dist_sq <= within_two_curcumscribed_radiuses_to_goal)) {
+    const auto yaws_between_points_corrected = xt::where(
+        yaws < M_PI_2, yaws_between_points, utils::normalize_angles(yaws_between_points + M_PI));
+    const auto corrected_yaws = xt::abs(
+        utils::shortest_angular_distance(data.trajectories.yaws, yaws_between_points_corrected));
+    data.costs += xt::pow(xt::mean(corrected_yaws, {1}, immediate) * weight_, power_);
+    return;
+  }
+  else if(mode_ == PathAngleMode::FORWARD_PREFERENCE) {
+    data.costs += xt::pow(xt::mean(yaws, {1}, immediate) * weight_, power_);
+    return;
+  }
+  else if(mode_ == PathAngleMode::CONSIDER_FEASIBLE_PATH_ORIENTATIONS) {
+    const auto yaws_between_points_corrected = xt::where(
+      xt::abs(utils::shortest_angular_distance(yaws_between_points, goal_yaw)) < M_PI_2,
+      yaws_between_points, utils::normalize_angles(yaws_between_points + M_PI));
+    const auto corrected_yaws = xt::abs(
+      utils::shortest_angular_distance(data.trajectories.yaws, yaws_between_points_corrected));
+    data.costs += xt::pow(xt::mean(corrected_yaws, {1}, immediate) * weight_, power_);
+    return;
   }
 }
 
