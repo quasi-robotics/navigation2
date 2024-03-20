@@ -59,6 +59,7 @@ float ObstaclesCritic::findCircumscribedCost(
   const double circum_radius = costmap->getLayeredCostmap()->getCircumscribedRadius();
   if (static_cast<float>(circum_radius) == circumscribed_radius_) {
     // early return if footprint size is unchanged
+    RCLCPP_DEBUG(logger_, "Pre-computed circumscribed cost: %f, circumscribed radius: %f", circumscribed_cost_, circumscribed_radius_);
     return circumscribed_cost_;
   }
 
@@ -91,6 +92,8 @@ float ObstaclesCritic::findCircumscribedCost(
 
   circumscribed_radius_ = static_cast<float>(circum_radius);
   circumscribed_cost_ = static_cast<float>(result);
+  RCLCPP_DEBUG(logger_, "Computed circumscribed cost: %f, circumscribed radius: %f. Inflation scale factor: %f, inflation radius: %f",
+               circumscribed_cost_, circumscribed_radius_, inflation_scale_factor_, inflation_radius_);
 
   return circumscribed_cost_;
 }
