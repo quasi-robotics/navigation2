@@ -24,6 +24,7 @@
 #include "nav2_msgs/action/drive_on_heading.hpp"
 #include "nav2_msgs/action/back_up.hpp"
 #include "nav2_util/node_utils.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 
 namespace nav2_behaviors
 {
@@ -125,17 +126,19 @@ public:
       return ResultStatus{Status::SUCCEEDED, ActionT::Result::NONE};
     }
 
-    auto cmd_vel = std::make_unique<geometry_msgs::msg::Twist>();
-    cmd_vel->linear.y = 0.0;
-    cmd_vel->angular.z = 0.0;
-    cmd_vel->linear.x = command_speed_;
+    auto cmd_vel = std::make_unique<geometry_msgs::msg::TwistStamped>();
+    cmd_vel->header.stamp = this->clock_->now();
+    cmd_vel->header.frame_id = this->robot_base_frame_;
+    cmd_vel->twist.linear.y = 0.0;
+    cmd_vel->twist.angular.z = 0.0;
+    cmd_vel->twist.linear.x = command_speed_;
 
     geometry_msgs::msg::Pose2D pose2d;
     pose2d.x = current_pose.pose.position.x;
     pose2d.y = current_pose.pose.position.y;
     pose2d.theta = tf2::getYaw(current_pose.pose.orientation);
 
-    if (!isCollisionFree(distance, cmd_vel.get(), pose2d)) {
+    if (!isCollisionFree(distance, cmd_vel->twist, pose2d)) {
       this->stopRobot();
       RCLCPP_WARN(this->logger_, "Collision Ahead - Exiting DriveOnHeading");
       return ResultStatus{Status::FAILED, ActionT::Result::COLLISION_AHEAD};
@@ -162,7 +165,7 @@ protected:
    */
   bool isCollisionFree(
     const double & distance,
-    geometry_msgs::msg::Twist * cmd_vel,
+    const geometry_msgs::msg::Twist & cmd_vel,
     geometry_msgs::msg::Pose2D & pose2d)
   {
     // Simulate ahead by simulate_ahead_time_ in this->cycle_frequency_ increments
@@ -175,7 +178,7 @@ protected:
     RCLCPP_DEBUG(this->logger_, "cycle_freq: %f, sim ahead: %f, max count: %i", this->cycle_frequency_, simulate_ahead_time_, max_cycle_count);
 
     while (cycle_count < max_cycle_count) {
-      sim_position_change = cmd_vel->linear.x * (cycle_count / this->cycle_frequency_);
+      sim_position_change = cmd_vel.linear.x * (cycle_count / this->cycle_frequency_);
       pose2d.x = init_pose.x + sim_position_change * cos(init_pose.theta);
       pose2d.y = init_pose.y + sim_position_change * sin(init_pose.theta);
       cycle_count++;
@@ -199,7 +202,7 @@ protected:
       fetch_data = false;
     }
     RCLCPP_DEBUG(this->logger_, "No coll %i cyc. ddist:%.3f, cvz:%.3f, cur x:%.3f, y:%.3f, z:%.3f, proj x:%.3f, y:%.3f, z:%.3f", 
-                cycle_count, diff_dist, cmd_vel->linear.x,
+                cycle_count, diff_dist, cmd_vel.linear.x,
                 init_pose.x, init_pose.y, init_pose.theta, 
                 pose2d.x, pose2d.y, pose2d.theta );
     return true;

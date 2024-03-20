@@ -37,6 +37,7 @@ AStarAlgorithm<NodeT>::AStarAlgorithm(
   const SearchInfo & search_info)
 : _traverse_unknown(true),
   _max_iterations(0),
+  _terminal_checking_interval(5000),
   _max_planning_time(0),
   _x_size(0),
   _y_size(0),
@@ -59,6 +60,7 @@ void AStarAlgorithm<NodeT>::initialize(
   const bool & allow_unknown,
   int & max_iterations,
   const int & max_on_approach_iterations,
+  const int & terminal_checking_interval,
   const double & max_planning_time,
   const float & lookup_table_size,
   const unsigned int & dim_3_size)
@@ -66,6 +68,7 @@ void AStarAlgorithm<NodeT>::initialize(
   _traverse_unknown = allow_unknown;
   _max_iterations = max_iterations;
   _max_on_approach_iterations = max_on_approach_iterations;
+  _terminal_checking_interval = terminal_checking_interval;
   _max_planning_time = max_planning_time;
   NodeT::precomputeDistanceHeuristic(lookup_table_size, _motion_model, dim_3_size, _search_info);
   _dim3_size = dim_3_size;
@@ -78,6 +81,7 @@ void AStarAlgorithm<Node2D>::initialize(
   const bool & allow_unknown,
   int & max_iterations,
   const int & max_on_approach_iterations,
+  const int & terminal_checking_interval,
   const double & max_planning_time,
   const float & /*lookup_table_size*/,
   const unsigned int & dim_3_size)
@@ -85,6 +89,7 @@ void AStarAlgorithm<Node2D>::initialize(
   _traverse_unknown = allow_unknown;
   _max_iterations = max_iterations;
   _max_on_approach_iterations = max_on_approach_iterations;
+  _terminal_checking_interval = terminal_checking_interval;
   _max_planning_time = max_planning_time;
 
   if (dim_3_size != 1) {
@@ -110,7 +115,7 @@ void AStarAlgorithm<NodeT>::setCollisionChecker(GridCollisionChecker * collision
     _y_size = y_size;
     NodeT::initMotionModel(_motion_model, _x_size, _y_size, _dim3_size, _search_info);
   }
-  _expander->setCollisionChecker(collision_checker);
+  _expander->setCollisionChecker(_collision_checker);
 }
 
 template<typename NodeT>
@@ -207,7 +212,8 @@ void AStarAlgorithm<NodeT>::setGoal(
       throw std::runtime_error("Start must be set before goal.");
     }
 
-    NodeT::resetObstacleHeuristic(_costmap, _start->pose.x, _start->pose.y, mx, my);
+    NodeT::resetObstacleHeuristic(
+      _collision_checker->getCostmapROS(), _start->pose.x, _start->pose.y, mx, my);
   }
 
   _goal_coordinates = goal_coords;
@@ -234,10 +240,8 @@ bool AStarAlgorithm<NodeT>::areInputsValid()
     throw nav2_core::GoalOccupied(std::string("Goal was in lethal cost, tolerance: ") + std::to_string(getToleranceHeuristic()) + ", cost: " + std::to_string(_collision_checker->getCost()));
   }
 
-  // Check if starting point is valid
-  if (!_start->isNodeValid(_traverse_unknown, _collision_checker)) {
-    throw nav2_core::StartOccupied("Start was in lethal cost, cost: " + std::to_string(_goal->getCost()));
-  }
+  // Note: We do not check the if the start is valid because it is cleared
+  clearStart();
 
   return true;
 }
@@ -246,6 +250,7 @@ template<typename NodeT>
 bool AStarAlgorithm<NodeT>::createPath(
   CoordinateVector & path, int & iterations,
   const float & tolerance,
+  std::function<bool()> cancel_checker,
   std::vector<std::tuple<float, float, float>> * expansions_log)
 {
   steady_clock::time_point start_time = steady_clock::now();
@@ -286,8 +291,11 @@ bool AStarAlgorithm<NodeT>::createPath(
     };
 
   while (iterations < getMaxIterations() && !_queue.empty()) {
-    // Check for planning timeout only on every Nth iteration
-    if (iterations % _timing_interval == 0) {
+    // Check for planning timeout and cancel only on every Nth iteration
+    if (iterations % _terminal_checking_interval == 0) {
+      if (cancel_checker()) {
+        throw nav2_core::PlannerCancelled("Planner was cancelled");
+      }
       std::chrono::duration<double> planning_duration =
         std::chrono::duration_cast<std::chrono::duration<double>>(steady_clock::now() - start_time);
       if (static_cast<double>(planning_duration.count()) >= _max_planning_time) {
@@ -405,7 +413,7 @@ float AStarAlgorithm<NodeT>::getHeuristicCost(const NodePtr & node)
   const Coordinates node_coords =
     NodeT::getCoords(node->getIndex(), getSizeX(), getSizeDim3());
   float heuristic = NodeT::getHeuristicCost(
-    node_coords, _goal_coordinates, _costmap);
+    node_coords, _goal_coordinates);
 
   if (heuristic < _best_heuristic_node.first) {
     _best_heuristic_node = {heuristic, node->getIndex()};
@@ -463,6 +471,20 @@ template<typename NodeT>
 unsigned int & AStarAlgorithm<NodeT>::getSizeDim3()
 {
   return _dim3_size;
+}
+
+template<>
+void AStarAlgorithm<Node2D>::clearStart()
+{
+  auto coords = Node2D::getCoords(_start->getIndex());
+  _costmap->setCost(coords.x, coords.y, nav2_costmap_2d::FREE_SPACE);
+}
+
+template<typename NodeT>
+void AStarAlgorithm<NodeT>::clearStart()
+{
+  auto coords = NodeT::getCoords(_start->getIndex(), _costmap->getSizeInCellsX(), getSizeDim3());
+  _costmap->setCost(coords.x, coords.y, nav2_costmap_2d::FREE_SPACE);
 }
 
 // Instantiate algorithm for the supported template types
