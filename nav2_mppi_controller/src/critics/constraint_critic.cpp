@@ -29,13 +29,30 @@ void ConstraintCritic::initialize()
     power_, weight_);
 
   float vx_max, vy_max, vx_min;
-  getParentParam(vx_max, "vx_max", 0.5);
-  getParentParam(vy_max, "vy_max", 0.0);
-  getParentParam(vx_min, "vx_min", -0.35);
+  getParentParam(vx_max, "vx_max", 0.5, ParameterType::Static);
+  getParentParam(vy_max, "vy_max", 0.0, ParameterType::Static);
+  getParentParam(vx_min, "vx_min", -0.35, ParameterType::Static);
 
   const float min_sgn = vx_min > 0.0 ? 1.0 : -1.0;
   max_vel_ = sqrtf(vx_max * vx_max + vy_max * vy_max);
   min_vel_ = min_sgn * sqrtf(vx_min * vx_min + vy_max * vy_max);
+
+  parameters_handler_->addPostCallback([this]() {reset();});
+}
+
+void ConstraintCritic::reset()
+{
+  auto getParentParam = parameters_handler_->getParamGetter(parent_name_);
+  float vx_max, vy_max, vx_min;
+  getParentParam(vx_max, "vx_max", 0.5, ParameterType::Static);
+  getParentParam(vy_max, "vy_max", 0.0, ParameterType::Static);
+  getParentParam(vx_min, "vx_min", -0.35, ParameterType::Static);
+
+  const float min_sgn = vx_min > 0.0 ? 1.0 : -1.0;
+  max_vel_ = sqrtf(vx_max * vx_max + vy_max * vy_max);
+  min_vel_ = min_sgn * sqrtf(vx_min * vx_min + vy_max * vy_max);
+
+  RCLCPP_INFO(logger_, "Constraint critic reset.");
 }
 
 void ConstraintCritic::score(CriticData & data)
