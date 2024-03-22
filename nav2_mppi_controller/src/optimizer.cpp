@@ -82,7 +82,7 @@ void Optimizer::getParams()
   getParam(s.sampling_std.wz, "wz_std", 0.4);
   getParam(s.retry_attempt_limit, "retry_attempt_limit", 1);
 
-  getParam(motion_model_name, "motion_model", std::string("DiffDrive"));
+  getParam(motion_model_name, "motion_model", std::string("DiffDrive"), ParameterType::Static);
 
   s.constraints = s.base_constraints;
   setMotionModel(motion_model_name);
