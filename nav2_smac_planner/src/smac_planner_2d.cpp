@@ -84,6 +84,9 @@ void SmacPlanner2D::configure(
     node, name + ".max_on_approach_iterations", rclcpp::ParameterValue(1000));
   node->get_parameter(name + ".max_on_approach_iterations", _max_on_approach_iterations);
   nav2_util::declare_parameter_if_not_declared(
+    node, name + ".terminal_checking_interval", rclcpp::ParameterValue(5000));
+  node->get_parameter(name + ".terminal_checking_interval", _terminal_checking_interval);
+  nav2_util::declare_parameter_if_not_declared(
     node, name + ".use_final_approach_orientation", rclcpp::ParameterValue(false));
   node->get_parameter(name + ".use_final_approach_orientation", _use_final_approach_orientation);
 
@@ -108,7 +111,7 @@ void SmacPlanner2D::configure(
   }
 
   // Initialize collision checker
-  _collision_checker = GridCollisionChecker(_costmap, 1 /*for 2D, most be 1*/, node);
+  _collision_checker = GridCollisionChecker(costmap_ros, 1 /*for 2D, most be 1*/, node);
   _collision_checker.setFootprint(
     costmap_ros->getRobotFootprint(),
     true /*for 2D, most use radius*/,
@@ -120,6 +123,7 @@ void SmacPlanner2D::configure(
     _allow_unknown,
     _max_iterations,
     _max_on_approach_iterations,
+    _terminal_checking_interval,
     _max_planning_time,
     0.0 /*unused for 2D*/,
     1.0 /*unused for 2D*/);
@@ -192,7 +196,8 @@ void SmacPlanner2D::cleanup()
 
 nav_msgs::msg::Path SmacPlanner2D::createPlan(
   const geometry_msgs::msg::PoseStamped & start,
-  const geometry_msgs::msg::PoseStamped & goal)
+  const geometry_msgs::msg::PoseStamped & goal,
+  std::function<bool()> cancel_checker)
 {
   std::lock_guard<std::mutex> lock_reinit(_mutex);
   steady_clock::time_point a = steady_clock::now();
@@ -240,9 +245,6 @@ nav_msgs::msg::Path SmacPlanner2D::createPlan(
 
   // Corner case of start and goal beeing on the same cell
   if (mx_start == mx_goal && my_start == my_goal) {
-    if (costmap->getCost(mx_start, my_start) == nav2_costmap_2d::LETHAL_OBSTACLE) {
-      throw nav2_core::StartOccupied("Start was in lethal cost");
-    }
     pose.pose = start.pose;
     // if we have a different start and goal orientation, set the unique path pose to the goal
     // orientation, unless use_final_approach_orientation=true where we need it to be the start
@@ -260,8 +262,13 @@ nav_msgs::msg::Path SmacPlanner2D::createPlan(
   // Note: All exceptions thrown are handled by the planner server and returned to the action
   if (!_a_star->createPath(
       path, num_iterations,
-      _tolerance / static_cast<float>(costmap->getResolution())))
+      _tolerance / static_cast<float>(costmap->getResolution()), cancel_checker))
   {
+    // Note: If the start is blocked only one iteration will occur before failure
+    if (num_iterations == 1) {
+      throw nav2_core::StartOccupied("Start occupied");
+    }
+
     if (num_iterations < _a_star->getMaxIterations()) {
       throw nav2_core::NoValidPathCouldBeFound("no valid path found");
     } else {
@@ -375,6 +382,9 @@ SmacPlanner2D::dynamicParametersCallback(std::vector<rclcpp::Parameter> paramete
             "disabling tolerance and on approach iterations.");
           _max_on_approach_iterations = std::numeric_limits<int>::max();
         }
+      } else if (name == _name + ".terminal_checking_interval") {
+        reinit_a_star = true;
+        _terminal_checking_interval = parameter.as_int();
       }
     }
   }
@@ -388,6 +398,7 @@ SmacPlanner2D::dynamicParametersCallback(std::vector<rclcpp::Parameter> paramete
         _allow_unknown,
         _max_iterations,
         _max_on_approach_iterations,
+        _terminal_checking_interval,
         _max_planning_time,
         0.0 /*unused for 2D*/,
         1.0 /*unused for 2D*/);

@@ -64,6 +64,9 @@ BtActionServer<ActionT>::BtActionServer(
   if (!node->has_parameter("action_server_result_timeout")) {
     node->declare_parameter("action_server_result_timeout", 900.0);
   }
+  if (!node->has_parameter("wait_for_service_timeout")) {
+    node->declare_parameter("wait_for_service_timeout", 1000);
+  }
 
   std::vector<std::string> error_code_names = {
     "follow_path_error_code",
@@ -237,8 +240,9 @@ bool BtActionServer<ActionT>::loadBehaviorTree(const std::string & bt_xml_filena
   // Create the Behavior Tree from the XML input
   try {
     tree_ = bt_->createTreeFromFile(filename, blackboard_);
-    for (auto & blackboard : tree_.blackboard_stack) {
-      blackboard->set<rclcpp::Node::SharedPtr>("node", client_node_);
+    for (auto & subtree : tree_.subtrees) {
+      auto & blackboard = subtree->blackboard;
+      blackboard->set("node", client_node_);
       blackboard->set<std::chrono::milliseconds>("server_timeout", default_server_timeout_);
       blackboard->set<std::chrono::milliseconds>("bt_loop_duration", bt_loop_duration_);
       blackboard->set<std::chrono::milliseconds>(
