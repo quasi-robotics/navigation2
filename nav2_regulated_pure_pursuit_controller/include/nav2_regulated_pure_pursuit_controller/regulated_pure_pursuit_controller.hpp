@@ -96,6 +96,8 @@ public:
     const geometry_msgs::msg::Twist & velocity,
     nav2_core::GoalChecker * /*goal_checker*/) override;
 
+  bool cancel() override;
+
   /**
    * @brief nav2_core setPlan - Sets the global plan
    * @param path The global plan
@@ -114,8 +116,7 @@ public:
   /**
    * @brief Reset the state of the controller if necessary after task is exited
    */
-  virtual void reset() override;
-
+  void reset() override;
 
 protected:
   /**
@@ -218,6 +219,8 @@ protected:
   Parameters * params_;
   double goal_dist_tol_;
   double control_duration_;
+  bool cancelling_ = false;
+  bool finished_cancelling_ = false;
 
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>> global_path_pub_;
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PointStamped>>

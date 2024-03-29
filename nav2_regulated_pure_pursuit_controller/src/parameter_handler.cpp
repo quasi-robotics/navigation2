@@ -86,6 +86,8 @@ ParameterHandler::ParameterHandler(
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".max_angular_accel", rclcpp::ParameterValue(3.2));
   declare_parameter_if_not_declared(
+    node, plugin_name_ + ".cancel_deceleration", rclcpp::ParameterValue(3.2));
+  declare_parameter_if_not_declared(
     node, plugin_name_ + ".allow_reversing", rclcpp::ParameterValue(false));
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".max_robot_pose_search_dist",
@@ -154,6 +156,7 @@ ParameterHandler::ParameterHandler(
   node->get_parameter(
     plugin_name_ + ".rotate_to_heading_min_angle", params_.rotate_to_heading_min_angle);
   node->get_parameter(plugin_name_ + ".max_angular_accel", params_.max_angular_accel);
+  node->get_parameter(plugin_name_ + ".cancel_deceleration", params_.cancel_deceleration);
   node->get_parameter(plugin_name_ + ".allow_reversing", params_.allow_reversing);
   node->get_parameter(
     plugin_name_ + ".max_robot_pose_search_dist",
@@ -243,6 +246,8 @@ ParameterHandler::dynamicParametersCallback(
         params_.regulated_linear_scaling_min_speed = parameter.as_double();
       } else if (name == plugin_name_ + ".max_angular_accel") {
         params_.max_angular_accel = parameter.as_double();
+      } else if (name == plugin_name_ + ".cancel_deceleration") {
+        params_.cancel_deceleration = parameter.as_double();
       } else if (name == plugin_name_ + ".rotate_to_heading_min_angle") {
         params_.rotate_to_heading_min_angle = parameter.as_double();
       } else if (name == plugin_name_ + ".desired_goal_distance") {
