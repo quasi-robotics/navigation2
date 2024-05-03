@@ -164,4 +164,3 @@ void PathAlignCritic::score(CriticData & data)
 PLUGINLIB_EXPORT_CLASS(
   mppi::critics::PathAlignCritic,
   mppi::critics::CriticFunction)
-nav2_mppi_controller/src/critics/path_angle_critic.cpp
