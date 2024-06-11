@@ -25,8 +25,15 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import AssistedTeleop, BackUp, DriveOnHeading, Spin
 from nav2_msgs.action import ComputePathThroughPoses, ComputePathToPose
-from nav2_msgs.action import FollowPath, FollowWaypoints, FollowGPSWaypoints, \
-    NavigateThroughPoses, NavigateToPose
+from nav2_msgs.action import (
+    DockRobot,
+    FollowGPSWaypoints,
+    FollowPath,
+    FollowWaypoints,
+    NavigateThroughPoses,
+    NavigateToPose,
+    UndockRobot,
+)
 from nav2_msgs.action import SmoothPath
 from nav2_msgs.srv import ClearEntireCostmap, GetCostmap, LoadMap, ManageLifecycleNodes
 
@@ -64,27 +71,20 @@ class BasicNavigator(Node):
         )
 
         self.initial_pose_received = False
-        self.nav_through_poses_client = ActionClient(
-            self, NavigateThroughPoses, 'navigate_through_poses'
-        )
+        self.nav_through_poses_client = ActionClient(self, NavigateThroughPoses, 'navigate_through_poses')
         self.nav_to_pose_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self.follow_waypoints_client = ActionClient(self, FollowWaypoints, 'follow_waypoints')
-        self.follow_gps_waypoints_client = ActionClient(self, FollowGPSWaypoints,
-                                                        'follow_gps_waypoints')
+        self.follow_gps_waypoints_client = ActionClient(self, FollowGPSWaypoints,'follow_gps_waypoints')
         self.follow_path_client = ActionClient(self, FollowPath, 'follow_path')
-        self.compute_path_to_pose_client = ActionClient(
-            self, ComputePathToPose, 'compute_path_to_pose'
-        )
-        self.compute_path_through_poses_client = ActionClient(
-            self, ComputePathThroughPoses, 'compute_path_through_poses'
-        )
+        self.compute_path_to_pose_client = ActionClient(self, ComputePathToPose, 'compute_path_to_pose')
+        self.compute_path_through_poses_client = ActionClient(self, ComputePathThroughPoses, 'compute_path_through_poses')
         self.smoother_client = ActionClient(self, SmoothPath, 'smooth_path')
         self.spin_client = ActionClient(self, Spin, 'spin')
         self.backup_client = ActionClient(self, BackUp, 'backup')
-        self.drive_on_heading_client = ActionClient(
-            self, DriveOnHeading, 'drive_on_heading'
-        )
+        self.drive_on_heading_client = ActionClient(self, DriveOnHeading, 'drive_on_heading')
         self.assisted_teleop_client = ActionClient(self, AssistedTeleop, 'assisted_teleop')
+        self.docking_client = ActionClient(self, DockRobot, 'dock_robot')
+        self.undocking_client = ActionClient(self, UndockRobot, 'undock_robot')
         self.localization_pose_sub = self.create_subscription(PoseWithCovarianceStamped,
                                                               'amcl_pose',
                                                               self._amclPoseCallback,
@@ -336,6 +336,77 @@ class BasicNavigator(Node):
 
         if not self.goal_handle.accepted:
             self.error('Follow path was rejected!')
+            return False
+
+        self.result_future = self.goal_handle.get_result_async()
+        return True
+
+    def dockRobotByPose(self, dock_pose, dock_type, nav_to_dock=True):
+        """Send a `DockRobot` action request."""
+        self.info("Waiting for 'DockRobot' action server")
+        while not self.docking_client.wait_for_server(timeout_sec=1.0):
+            self.info('"DockRobot" action server not available, waiting...')
+
+        goal_msg = DockRobot.Goal()
+        goal_msg.use_dock_id = False
+        goal_msg.dock_pose = dock_pose
+        goal_msg.dock_type = dock_type
+        goal_msg.navigate_to_staging_pose = nav_to_dock  # if want to navigate before staging
+
+        self.info('Docking at pose: ' + str(dock_pose) + '...')
+        send_goal_future = self.docking_client.send_goal_async(goal_msg,
+                                                               self._feedbackCallback)
+        rclpy.spin_until_future_complete(self, send_goal_future)
+        self.goal_handle = send_goal_future.result()
+
+        if not self.goal_handle.accepted:
+            self.info('Docking request was rejected!')
+            return False
+
+        self.result_future = self.goal_handle.get_result_async()
+        return True
+
+    def dockRobotByID(self, dock_id, nav_to_dock=True):
+        """Send a `DockRobot` action request."""
+        self.info("Waiting for 'DockRobot' action server")
+        while not self.docking_client.wait_for_server(timeout_sec=1.0):
+            self.info('"DockRobot" action server not available, waiting...')
+
+        goal_msg = DockRobot.Goal()
+        goal_msg.use_dock_id = True
+        goal_msg.dock_id = dock_id
+        goal_msg.navigate_to_staging_pose = nav_to_dock  # if want to navigate before staging
+
+        self.info('Docking at dock ID: ' + str(dock_id) + '...')
+        send_goal_future = self.docking_client.send_goal_async(goal_msg,
+                                                               self._feedbackCallback)
+        rclpy.spin_until_future_complete(self, send_goal_future)
+        self.goal_handle = send_goal_future.result()
+
+        if not self.goal_handle.accepted:
+            self.info('Docking request was rejected!')
+            return False
+
+        self.result_future = self.goal_handle.get_result_async()
+        return True
+
+    def undockRobot(self, dock_type=''):
+        """Send a `UndockRobot` action request."""
+        self.info("Waiting for 'UndockRobot' action server")
+        while not self.undocking_client.wait_for_server(timeout_sec=1.0):
+            self.info('"UndockRobot" action server not available, waiting...')
+
+        goal_msg = UndockRobot.Goal()
+        goal_msg.dock_type = dock_type
+
+        self.info('Undocking from dock of type: ' + str(dock_type) + '...')
+        send_goal_future = self.undocking_client.send_goal_async(goal_msg,
+                                                                 self._feedbackCallback)
+        rclpy.spin_until_future_complete(self, send_goal_future)
+        self.goal_handle = send_goal_future.result()
+
+        if not self.goal_handle.accepted:
+            self.info('Undocking request was rejected!')
             return False
 
         self.result_future = self.goal_handle.get_result_async()
