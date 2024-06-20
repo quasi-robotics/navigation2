@@ -108,7 +108,8 @@ def generate_launch_description():
                 emulate_tty=True,  # https://github.com/ros2/launch/issues/188
                 parameters=[{'autostart': autostart},
                             {'node_names': lifecycle_nodes},
-                            {'subsystem_name': 'Collision Monitor'}],
+                            {'subsystem_name': 'Collision Monitor'},
+                            {'bond_timeout': 6.0}],
                 remappings=remappings,
             ),
             Node(
