@@ -113,7 +113,7 @@ void PathAngleCritic::score(CriticData & data)
     xt::abs(utils::shortest_angular_distance(data.trajectories.yaws, yaws_between_points));
 
   if(mode_ == PathAngleMode::NO_DIRECTIONAL_PREFERENCE ||
-    (mode_ == PathAngleMode::FORWARD_PREFERENCE && dist_sq <= within_two_curcumscribed_radiuses_to_goal)) {
+    (mode_ == PathAngleMode::FORWARD_PREFERENCE && within_two_curcumscribed_radiuses_to_goal)) {
     const auto yaws_between_points_corrected = xt::where(
         yaws < M_PI_2, yaws_between_points, utils::normalize_angles(yaws_between_points + M_PI));
     const auto corrected_yaws = xt::abs(
