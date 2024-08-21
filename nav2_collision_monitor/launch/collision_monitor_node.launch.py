@@ -20,7 +20,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch.substitutions import NotEqualsSubstitution
 from launch_ros.actions import LoadComposableNodes, SetParameter
@@ -91,7 +91,7 @@ def generate_launch_description():
 
     # Declare node launching commands
     load_nodes = GroupAction(
-        condition=IfCondition(PythonExpression(['not ', use_composition])),
+        condition=UnlessCondition(use_composition),
         actions=[
             SetParameter('use_sim_time', use_sim_time),
             PushROSNamespace(
