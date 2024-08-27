@@ -431,7 +431,7 @@ void Costmap2D::convexFillCells(
   std::vector<MapLocation> & polygon_cells)
 {
   // we need a minimum polygon of a triangle
-  if (polygon.size() < 3) {
+  if (polygon.size() < 2) {
     return;
   }
 
