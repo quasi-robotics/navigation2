@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Text
 
 import launch
 import yaml
+import pathlib
 
 
 class DictItemReference:
@@ -98,6 +99,9 @@ class RewrittenYaml(launch.Substitution):
             if not isinstance(yaml_filenames, List):
                 yaml_filenames = [yaml_filenames]
             for yaml_filename in yaml_filenames:
+                yaml_filename = pathlib.Path(yaml_filename)
+                if not yaml_filename.is_file():
+                    continue
                 data = yaml.safe_load(open(yaml_filename, 'r'))
                 self.substitute_params(data, param_rewrites)
                 self.add_params(data, param_rewrites)
