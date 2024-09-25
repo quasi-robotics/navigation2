@@ -28,6 +28,7 @@ namespace nav2_smac_planner
 {
 
 using namespace std::chrono;  // NOLINT
+using namespace std::string_literals;
 using rcl_interfaces::msg::ParameterType;
 using std::placeholders::_1;
 
@@ -425,9 +426,9 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
     }
 
     if (num_iterations < _a_star->getMaxIterations()) {
-      throw nav2_core::NoValidPathCouldBeFound("no valid path found");
+      throw nav2_core::NoValidPathCouldBeFound("no valid path found, iteration: "s + std::to_string(num_iterations));
     } else {
-      throw nav2_core::PlannerTimedOut("exceeded maximum iterations");
+      throw nav2_core::PlannerTimedOut("exceeded maximum iterations: "s + std::to_string(num_iterations));
     }
   }
 
