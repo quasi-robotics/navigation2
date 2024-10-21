@@ -151,6 +151,13 @@ public:
     return BT::NodeStatus::SUCCESS;
   }
 
+  BT::NodeStatus on_cancelled() override
+  {
+    config().blackboard->set<std::vector<int>>("sequence", result_.result->sequence);
+    config().blackboard->set<bool>("on_cancelled_triggered", true);
+    return BT::NodeStatus::SUCCESS;
+  }
+
   static BT::PortsList providedPorts()
   {
     return providedBasicPorts({BT::InputPort<int>("order", "Fibonacci order")});
@@ -364,7 +371,7 @@ TEST_F(BTActionNodeTestFixture, test_server_timeout_failure)
   EXPECT_EQ(result, BT::NodeStatus::FAILURE);
 
   // since the server timeout is 90ms and bt loop duration is 10ms, number of ticks should be 9
-  EXPECT_EQ(ticks, 9);
+  EXPECT_EQ(ticks, 10);
 
   // start a new execution cycle with the previous BT to ensure previous state doesn't leak into
   // the new cycle

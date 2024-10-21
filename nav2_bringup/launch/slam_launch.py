@@ -49,10 +49,8 @@ def generate_launch_description():
             source_file=params_file,
             root_key=namespace,
             param_rewrites={},
-            convert_types=True,
-        ),
-        allow_substs=True,
-    )
+            convert_types=True),
+        allow_substs=True)
 
     # Declare the launch arguments
     declare_namespace_cmd = DeclareLaunchArgument(

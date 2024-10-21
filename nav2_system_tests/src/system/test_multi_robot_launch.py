@@ -122,27 +122,22 @@ def generate_launch_description():
     for robot in robots:
         params_file = eval(f"{robot['name']}_params_file")
 
-        group = GroupAction(
-            [
-                # Instances use the robot's name for namespace
-                PushROSNamespace(robot['name']),
-                IncludeLaunchDescription(
-                    PythonLaunchDescriptionSource(
-                        os.path.join(bringup_dir, 'launch', 'bringup_launch.py')
-                    ),
-                    launch_arguments={
-                        'namespace': robot['name'],
-                        'map': map_yaml_file,
-                        'use_sim_time': 'True',
-                        'params_file': params_file,
-                        'bt_xml_file': bt_xml_file,
-                        'autostart': 'True',
-                        'use_composition': 'False',
-                        'use_remappings': 'True',
-                    }.items(),
-                ),
-            ]
-        )
+        group = GroupAction([
+            # Instances use the robot's name for namespace
+            PushROSNamespace(robot['name']),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bringup_dir, 'launch', 'bringup_launch.py')),
+                launch_arguments={
+                                  'namespace': robot['name'],
+                                  'map': map_yaml_file,
+                                  'use_sim_time': 'True',
+                                  'params_file': params_file,
+                                  'bt_xml_file': bt_xml_file,
+                                  'autostart': 'True',
+                                  'use_composition': 'False',
+                                  'use_remappings': 'True'}.items())
+        ])
         nav_instances_cmds.append(group)
 
     ld = LaunchDescription()

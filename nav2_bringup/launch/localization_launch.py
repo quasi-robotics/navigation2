@@ -59,10 +59,8 @@ def generate_launch_description():
             source_file=params_file,
             root_key=namespace,
             param_rewrites={},
-            convert_types=True,
-        ),
-        allow_substs=True,
-    )
+            convert_types=True),
+        allow_substs=True)
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1'

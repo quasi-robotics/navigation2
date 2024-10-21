@@ -64,18 +64,15 @@ def generate_launch_description():
     params_file = ReplaceString(
         source_file=params_file,
         replacements={'<robot_namespace>': ('/', namespace)},
-        condition=IfCondition(use_namespace),
-    )
+        condition=IfCondition(use_namespace))
 
     configured_params = ParameterFile(
         RewrittenYaml(
             source_file=params_file,
             root_key=namespace,
             param_rewrites={},
-            convert_types=True,
-        ),
-        allow_substs=True,
-    )
+            convert_types=True),
+        allow_substs=True)
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1'
@@ -134,64 +131,53 @@ def generate_launch_description():
     )
 
     # Specify the actions
-    bringup_cmd_group = GroupAction(
-        [
-            PushROSNamespace(condition=IfCondition(use_namespace), namespace=namespace),
-            Node(
-                condition=IfCondition(use_composition),
-                name='nav2_container',
-                package='rclcpp_components',
-                executable='component_container_isolated',
-                parameters=[configured_params, {'autostart': autostart}],
-                arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings,
-                output='screen',
-            ),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(launch_dir, 'slam_launch.py')
-                ),
-                condition=IfCondition(slam),
-                launch_arguments={
-                    'namespace': namespace,
-                    'use_sim_time': use_sim_time,
-                    'autostart': autostart,
-                    'use_respawn': use_respawn,
-                    'params_file': params_file,
-                }.items(),
-            ),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(launch_dir, 'localization_launch.py')
-                ),
-                condition=IfCondition(PythonExpression(['not ', slam])),
-                launch_arguments={
-                    'namespace': namespace,
-                    'map': map_yaml_file,
-                    'use_sim_time': use_sim_time,
-                    'autostart': autostart,
-                    'params_file': params_file,
-                    'use_composition': use_composition,
-                    'use_respawn': use_respawn,
-                    'container_name': 'nav2_container',
-                }.items(),
-            ),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(launch_dir, 'navigation_launch.py')
-                ),
-                launch_arguments={
-                    'namespace': namespace,
-                    'use_sim_time': use_sim_time,
-                    'autostart': autostart,
-                    'params_file': params_file,
-                    'use_composition': use_composition,
-                    'use_respawn': use_respawn,
-                    'container_name': 'nav2_container',
-                }.items(),
-            ),
-        ]
-    )
+    bringup_cmd_group = GroupAction([
+        PushROSNamespace(
+            condition=IfCondition(use_namespace),
+            namespace=namespace),
+
+        Node(
+            condition=IfCondition(use_composition),
+            name='nav2_container',
+            package='rclcpp_components',
+            executable='component_container_isolated',
+            parameters=[configured_params, {'autostart': autostart}],
+            arguments=['--ros-args', '--log-level', log_level],
+            remappings=remappings,
+            output='screen'),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(launch_dir, 'slam_launch.py')),
+            condition=IfCondition(slam),
+            launch_arguments={'namespace': namespace,
+                              'use_sim_time': use_sim_time,
+                              'autostart': autostart,
+                              'use_respawn': use_respawn,
+                              'params_file': params_file}.items()),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(launch_dir,
+                                                       'localization_launch.py')),
+            condition=IfCondition(PythonExpression(['not ', slam])),
+            launch_arguments={'namespace': namespace,
+                              'map': map_yaml_file,
+                              'use_sim_time': use_sim_time,
+                              'autostart': autostart,
+                              'params_file': params_file,
+                              'use_composition': use_composition,
+                              'use_respawn': use_respawn,
+                              'container_name': 'nav2_container'}.items()),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(launch_dir, 'navigation_launch.py')),
+            launch_arguments={'namespace': namespace,
+                              'use_sim_time': use_sim_time,
+                              'autostart': autostart,
+                              'params_file': params_file,
+                              'use_composition': use_composition,
+                              'use_respawn': use_respawn,
+                              'container_name': 'nav2_container'}.items()),
+    ])
 
     # Create the launch description and populate
     ld = LaunchDescription()

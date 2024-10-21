@@ -204,8 +204,12 @@ protected:
   nav2_msgs::msg::CollisionMonitorState::SharedPtr action_state_;
 
   // CollisionMonitor collision points markers
+<<<<<<< HEAD
   rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr
     collision_points_marker_sub_;
+=======
+  rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr collision_points_marker_sub_;
+>>>>>>> upstream/iron
   visualization_msgs::msg::MarkerArray::SharedPtr collision_points_marker_msg_;
 
   // Service client for setting CollisionMonitor parameters
@@ -859,7 +863,8 @@ TEST_F(Tester, testProcessApproach)
   // 3. Obstacle is inside robot footprint
   publishScan(0.5, curr_time);
   ASSERT_TRUE(waitData(0.5, 500ms, curr_time));
-  publishCmdVel(0.5, 0.2, 0.0);
+  // Publish impossible cmd_vel to ensure robot footprint is checked
+  publishCmdVel(1000000000.0, 0.2, 0.0);
   ASSERT_TRUE(waitCmdVel(500ms));
   ASSERT_NEAR(cmd_vel_out_->linear.x, 0.0, EPSILON);
   ASSERT_NEAR(cmd_vel_out_->linear.y, 0.0, EPSILON);
@@ -1379,6 +1384,7 @@ TEST_F(Tester, testCollisionPointsMarkers)
   cm_->stop();
 }
 
+<<<<<<< HEAD
 TEST_F(Tester, testVelocityPolygonStop)
 {
   // Set Collision Monitor parameters.
@@ -1447,6 +1453,8 @@ TEST_F(Tester, testVelocityPolygonStop)
   cm_->stop();
 }
 
+=======
+>>>>>>> upstream/iron
 int main(int argc, char ** argv)
 {
   // Initialize the system

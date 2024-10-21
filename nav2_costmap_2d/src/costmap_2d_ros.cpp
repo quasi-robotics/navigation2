@@ -110,8 +110,6 @@ void Costmap2DROS::init()
 {
   RCLCPP_INFO(get_logger(), "Creating Costmap");
 
-  std::vector<std::string> clearable_layers{"obstacle_layer", "voxel_layer", "range_layer"};
-
   declare_parameter("always_send_full_costmap", rclcpp::ParameterValue(false));
   declare_parameter("footprint_padding", rclcpp::ParameterValue(0.01f));
   declare_parameter("footprint", rclcpp::ParameterValue(std::string("[]")));
@@ -136,7 +134,6 @@ void Costmap2DROS::init()
   declare_parameter("unknown_cost_value", rclcpp::ParameterValue(static_cast<unsigned char>(0xff)));
   declare_parameter("update_frequency", rclcpp::ParameterValue(5.0));
   declare_parameter("use_maximum", rclcpp::ParameterValue(false));
-  declare_parameter("clearable_layers", rclcpp::ParameterValue(clearable_layers));
 }
 
 Costmap2DROS::~Costmap2DROS()
@@ -296,9 +293,7 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
     // Check timeout
     if (now() > initial_transform_timeout_point) {
       RCLCPP_ERROR(
-        get_logger(),
-        "Failed to activate %s because "
-        "transform from %s to %s did not become available before timeout",
+        get_logger(), "Failed to activate %s because transform from %s to %s did not become available before timeout",
         get_name(), robot_base_frame_.c_str(), global_frame_.c_str());
 
       return nav2_util::CallbackReturn::FAILURE;
@@ -364,6 +359,7 @@ nav2_util::CallbackReturn
 Costmap2DROS::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 {
   RCLCPP_INFO(get_logger(), "Cleaning up");
+  executor_thread_.reset();
 
   costmap_publisher_.reset();
   clear_costmap_service_.reset();
@@ -378,8 +374,6 @@ Costmap2DROS::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   footprint_sub_.reset();
   footprint_pub_.reset();
 
-
-  executor_thread_.reset();
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
@@ -521,6 +515,9 @@ Costmap2DROS::mapUpdateLoop(double frequency)
 
     // Execute after start() will complete plugins activation
     if (!stopped_) {
+      // Lock while modifying layered costmap and publishing values
+      std::scoped_lock<std::mutex> lock(_dynamic_parameter_mutex);
+
       // Measure the execution time of the updateMap method
       timer.start();
       updateMap();
@@ -721,6 +718,7 @@ Costmap2DROS::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameter
 {
   auto result = rcl_interfaces::msg::SetParametersResult();
   bool resize_map = false;
+  std::lock_guard<std::mutex> lock_reinit(_dynamic_parameter_mutex);
 
   for (auto parameter : parameters) {
     const auto & type = parameter.get_type();
@@ -816,6 +814,7 @@ Costmap2DROS::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameter
     layered_costmap_->resizeMap(
       (unsigned int)(map_width_meters_ / resolution_),
       (unsigned int)(map_height_meters_ / resolution_), resolution_, origin_x_, origin_y_);
+    updateMap();
   }
 
   result.successful = true;
