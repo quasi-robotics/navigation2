@@ -451,10 +451,6 @@ void RegulatedPurePursuitController::applyConstraints(
   linear_vel = sign * linear_vel;
 }
 
-void RegulatedPurePursuitController::reset() {
-  goal_dist_tol_ = params_->desired_goal_distance;
-}
-
 void RegulatedPurePursuitController::setPlan(const nav_msgs::msg::Path & path)
 {
   path_handler_->setPlan(path);
