@@ -480,6 +480,8 @@ Costmap2DROS::setRobotFootprint(const std::vector<geometry_msgs::msg::Point> & p
   padded_footprint_ = points;
   padFootprint(padded_footprint_, footprint_padding_);
   layered_costmap_->setFootprint(padded_footprint_);
+  RCLCPP_INFO(get_logger(), "Inscribed radius: %f", layered_costmap_->getInscribedRadius());
+  RCLCPP_INFO(get_logger(), "Circumscribed radius: %f", layered_costmap_->getCircumscribedRadius());
 }
 
 void
