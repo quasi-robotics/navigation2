@@ -80,8 +80,8 @@ void Optimizer::getParams()
   getParam(s.base_constraints.ax_max, "ax_max", 3.0f);
   getParam(s.base_constraints.ax_min, "ax_min", -3.0f);
   getParam(s.base_constraints.ay_max, "ay_max", 3.0f);
-  getParam(s.base_constraints.az_min, "az_min", -3.5f);
   getParam(s.base_constraints.az_max, "az_max", 3.5f);
+  getParam(s.base_constraints.dz_max, "dz_max", 3.5f);
   getParam(s.sampling_std.vx, "vx_std", 0.2f);
   getParam(s.sampling_std.vy, "vy_std", 0.2f);
   getParam(s.sampling_std.wz, "wz_std", 0.4f);
@@ -259,8 +259,8 @@ void Optimizer::applyControlSequenceConstraints()
   float max_delta_vx = s.model_dt * s.constraints.ax_max;
   float min_delta_vx = s.model_dt * s.constraints.ax_min;
   float max_delta_vy = s.model_dt * s.constraints.ay_max;
-  float min_delta_wz = s.model_dt * s.constraints.az_min;
-  float max_delta_wz = s.model_dt * s.constraints.az_max;
+  float max_delta_dwz = s.model_dt * s.constraints.dz_max;
+  float max_delta_awz = s.model_dt * s.constraints.az_max;
   float vx_last = control_sequence_.vx(0);
   float vy_last = control_sequence_.vy(0);
   float wz_last = control_sequence_.wz(0);
@@ -270,7 +270,10 @@ void Optimizer::applyControlSequenceConstraints()
     vx_last = vx_curr;
 
     float & wz_curr = control_sequence_.wz(i);
-    wz_curr = std::clamp(wz_curr, wz_last + min_delta_wz, wz_last + max_delta_wz);
+    if(wz_curr > wz_last) // acceleration
+      wz_curr = std::clamp(wz_curr, wz_last - max_delta_dwz, wz_last + max_delta_awz);
+    else                  // deceleration
+      wz_curr = std::clamp(wz_curr, wz_last - max_delta_awz, wz_last + max_delta_dwz);
     wz_last = wz_curr;
 
     if (isHolonomic()) {
