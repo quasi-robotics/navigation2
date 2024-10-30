@@ -230,7 +230,7 @@ def generate_launch_description():
                 name='lifecycle_manager_navigation',
                 output='screen',
                 arguments=['--ros-args', '--log-level', log_level],
-                parameters=[{'autostart': autostart}, {'node_names': lifecycle_nodes}, {'bond_timeout': 6.0}],
+                parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}],
             ),
         ],
     )
