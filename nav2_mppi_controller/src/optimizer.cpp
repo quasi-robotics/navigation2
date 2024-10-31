@@ -270,10 +270,21 @@ void Optimizer::applyControlSequenceConstraints()
     vx_last = vx_curr;
 
     float & wz_curr = control_sequence_.wz(i);
-    if(wz_curr > wz_last) // acceleration
-      wz_curr = std::clamp(wz_curr, wz_last - max_delta_dwz, wz_last + max_delta_awz);
-    else                  // deceleration
-      wz_curr = std::clamp(wz_curr, wz_last - max_delta_awz, wz_last + max_delta_dwz);
+/*
+    if(wz_last > 0.0f)
+      wz_curr = std::clamp(wz_curr, std::max(wz_last - max_delta_dwz, 0.0f), wz_last + max_delta_awz);
+    else if(wz_last < 0.0f)
+      wz_curr = std::clamp(wz_curr, wz_last - max_delta_awz, std::min(wz_last + max_delta_dwz, 0.0f));
+    else
+      wz_curr = std::clamp(wz_curr, wz_last - max_delta_awz, wz_last + max_delta_awz);
+*/
+    float dwz = wz_curr - wz_last;
+    if (abs(wz_curr) >= abs(wz_last) && wz_curr * wz_last >= 0.0)
+      dwz = std::clamp(dwz, -max_delta_awz, max_delta_awz);
+    else
+      dwz = std::clamp(dwz, -max_delta_dwz, max_delta_dwz);
+    wz_curr = wz_last + dwz;
+
     wz_last = wz_curr;
 
     if (isHolonomic()) {
