@@ -29,6 +29,7 @@ void PathAlignCritic::initialize()
   getParam(max_path_occupancy_ratio_, "max_path_occupancy_ratio", 0.07f);
   getParam(offset_from_furthest_, "offset_from_furthest", 20);
   getParam(trajectory_point_step_, "trajectory_point_step", 4);
+  getParam(trajectory_point_offset_, "trajectory_point_offset", 3);
   getParam(
     threshold_to_consider_,
     "threshold_to_consider", 0.5f);
@@ -117,7 +118,7 @@ void PathAlignCritic::score(CriticData & data)
     path_pt = 0u;
     float Tx_m1 = T_x(t, 0);
     float Ty_m1 = T_y(t, 0);
-    for (size_t p = 1; p < traj_sampled_size; p++) {
+    for (size_t p = std::min(1+trajectory_point_offset_, traj_sampled_size-1); p < traj_sampled_size; p++) {
       const float Tx = T_x(t, p);
       const float Ty = T_y(t, p);
       dx = Tx - Tx_m1;
