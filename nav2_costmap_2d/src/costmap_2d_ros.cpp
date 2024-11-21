@@ -294,6 +294,9 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
       " to become available, tf error: %s",
       robot_base_frame_.c_str(), global_frame_.c_str(), tf_error.c_str());
 
+    if(initial_transform_timeout_ < 0.0)  // do not wait for transform if initial_transform_timeout is < 0.0
+      break;
+
     // Check timeout
     if (now() > initial_transform_timeout_point) {
       RCLCPP_ERROR(
@@ -302,9 +305,6 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
       return nav2_util::CallbackReturn::FAILURE;
     }
-
-    if(initial_transform_timeout_ < 0.0)  // do not wait for transform if initial_transform_timeout is < 0.0
-      break;
 
     // The error string will accumulate and errors will typically be the same, so the last
     // will do for the warning above. Reset the string here to avoid accumulation
