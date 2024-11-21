@@ -284,12 +284,10 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
   RCLCPP_INFO(get_logger(), "Checking transform");
   rclcpp::Rate r(2);
-  const auto initial_transform_timeout = rclcpp::Duration::from_seconds(
-    initial_transform_timeout_);
+  const auto initial_transform_timeout = rclcpp::Duration::from_seconds(initial_transform_timeout_);
   const auto initial_transform_timeout_point = now() + initial_transform_timeout;
   while (rclcpp::ok() &&
-    !tf_buffer_->canTransform(
-      global_frame_, robot_base_frame_, tf2::TimePointZero, &tf_error))
+         !tf_buffer_->canTransform(global_frame_, robot_base_frame_, tf2::TimePointZero, &tf_error))
   {
     RCLCPP_INFO(
       get_logger(), "Timed out waiting for transform from %s to %s"
@@ -304,6 +302,9 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
       return nav2_util::CallbackReturn::FAILURE;
     }
+
+    if(initial_transform_timeout_ < 0.0)  // do not wait for transform if initial_transform_timeout is < 0.0
+      break;
 
     // The error string will accumulate and errors will typically be the same, so the last
     // will do for the warning above. Reset the string here to avoid accumulation
