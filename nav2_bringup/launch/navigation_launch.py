@@ -240,7 +240,7 @@ def generate_launch_description():
                 name='lifecycle_manager_navigation',
                 output='screen',
                 arguments=['--ros-args', '--log-level', log_level],
-                parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}],
+                parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}, configured_params],
             ),
         ],
     )
@@ -320,7 +320,7 @@ def generate_launch_description():
                         package='nav2_lifecycle_manager',
                         plugin='nav2_lifecycle_manager::LifecycleManager',
                         name='lifecycle_manager_navigation',
-                        parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}],
+                        parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}, configured_params],
                     ),
                 ],
             ),
