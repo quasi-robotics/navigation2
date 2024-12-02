@@ -51,7 +51,7 @@ public:
   /**
    * Throws std::runtime_error on failure
    */
-  uint8_t get_state(const std::chrono::milliseconds timeout = std::chrono::milliseconds(2000));
+  uint8_t get_state(const std::chrono::milliseconds timeout = std::chrono::milliseconds(3000));
 
 protected:
   rclcpp::Node::SharedPtr node_;
