@@ -47,7 +47,7 @@ OdomSmoother::OdomSmoother(
   const nav2_util::LifecycleNode::WeakPtr & parent,
   double filter_duration,
   const std::string & odom_topic)
-: odom_history_duration_(rclcpp::Duration::from_seconds(filter_duration))
+: received_odom_(false), odom_history_duration_(rclcpp::Duration::from_seconds(filter_duration))
 {
   auto node = parent.lock();
   odom_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
