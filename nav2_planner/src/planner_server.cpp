@@ -705,9 +705,11 @@ void PlannerServer::isPathValid(
         cost == nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE))
       {
         response->is_valid = false;
+        RCLCPP_DEBUG(get_logger(), "Path invalid - point %d (out of %zi) at %i,%i (%f,%f) is at cost %d", i, request->path.poses.size(), mx, my, position.x, position.y, (int)cost);
         break;
       } else if (cost == nav2_costmap_2d::LETHAL_OBSTACLE) {
         response->is_valid = false;
+        RCLCPP_DEBUG(get_logger(), "Path invalid - point %d (out of %zi) at %i,%i (%f,%f) is at cost %d", i, request->path.poses.size(), mx, my, position.x, position.y, (int)cost);
         break;
       }
     }
