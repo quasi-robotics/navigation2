@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 #include <pluginlib/class_loader.hpp>
-#include <xtensor/xtensor.hpp>
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"

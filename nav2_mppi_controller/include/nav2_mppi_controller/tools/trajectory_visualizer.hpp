@@ -15,9 +15,10 @@
 #ifndef NAV2_MPPI_CONTROLLER__TOOLS__TRAJECTORY_VISUALIZER_HPP_
 #define NAV2_MPPI_CONTROLLER__TOOLS__TRAJECTORY_VISUALIZER_HPP_
 
+#include <Eigen/Dense>
+
 #include <memory>
 #include <string>
-#include <xtensor/xtensor.hpp>
 
 #include "nav_msgs/msg/path.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -74,7 +75,7 @@ public:
     * @param trajectory Optimal trajectory
     */
   void add(
-    const xt::xtensor<float, 2> & trajectory, const std::string & marker_namespace,
+    const Eigen::ArrayXXf & trajectory, const std::string & marker_namespace,
     const builtin_interfaces::msg::Time & cmd_stamp);
 
   /**
