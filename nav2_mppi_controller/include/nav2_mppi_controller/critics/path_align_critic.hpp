@@ -47,7 +47,6 @@ public:
 protected:
   size_t offset_from_furthest_{0};
   int trajectory_point_step_{0};
-  size_t trajectory_point_offset_{0};
   float threshold_to_consider_{0};
   float max_path_occupancy_ratio_{0};
   bool use_path_orientations_{false};

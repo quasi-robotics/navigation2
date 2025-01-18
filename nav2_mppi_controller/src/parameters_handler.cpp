@@ -26,26 +26,16 @@ ParametersHandler::ParametersHandler(
   logger_ = node->get_logger();
 }
 
-ParametersHandler::~ParametersHandler()
-{
-  auto node = node_.lock();
-  if (on_set_param_handler_ && node) {
-    node->remove_on_set_parameters_callback(on_set_param_handler_.get());
-  }
-  on_set_param_handler_.reset();
-}
-
 void ParametersHandler::start()
 {
   auto node = node_.lock();
-
-  auto get_param = getParamGetter(node_name_);
-  get_param(verbose_, "verbose", false);
-
   on_set_param_handler_ = node->add_on_set_parameters_callback(
     std::bind(
       &ParametersHandler::dynamicParamsCallback, this,
       std::placeholders::_1));
+
+  auto get_param = getParamGetter(node_name_);
+  get_param(verbose_, "verbose", false);
 }
 
 rcl_interfaces::msg::SetParametersResult
@@ -53,9 +43,6 @@ ParametersHandler::dynamicParamsCallback(
   std::vector<rclcpp::Parameter> parameters)
 {
   rcl_interfaces::msg::SetParametersResult result;
-  result.successful = true;
-  result.reason = "";
-
   std::lock_guard<std::mutex> lock(parameters_change_mutex_);
 
   for (auto & pre_cb : pre_callbacks_) {
@@ -68,13 +55,9 @@ ParametersHandler::dynamicParamsCallback(
     if (auto callback = get_param_callbacks_.find(param_name);
       callback != get_param_callbacks_.end())
     {
-      callback->second(param, result);
+      callback->second(param);
     } else {
-      result.successful = false;
-      if (!result.reason.empty()) {
-        result.reason += "\n";
-      }
-      result.reason += "get_param_callback func for '" + param_name + "' not found.\n";
+      RCLCPP_WARN(logger_, "Parameter %s not found", param_name.c_str());
     }
   }
 
@@ -82,9 +65,7 @@ ParametersHandler::dynamicParamsCallback(
     post_cb();
   }
 
-  if (!result.successful) {
-    RCLCPP_ERROR(logger_, result.reason.c_str());
-  }
+  result.successful = true;
   return result;
 }
 

@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NAV2_MPPI_CONTROLLER__CRITICS__VELOCITY_DEADBAND_CRITIC_HPP_
-#define NAV2_MPPI_CONTROLLER__CRITICS__VELOCITY_DEADBAND_CRITIC_HPP_
-
-#include <vector>
+#ifndef NAV2_MPPI_CONTROLLER__CRITICS__PATH_ALIGN_LEGACY_CRITIC_HPP_
+#define NAV2_MPPI_CONTROLLER__CRITICS__PATH_ALIGN_LEGACY_CRITIC_HPP_
 
 #include "nav2_mppi_controller/critic_function.hpp"
 #include "nav2_mppi_controller/models/state.hpp"
@@ -25,30 +23,38 @@ namespace mppi::critics
 {
 
 /**
- * @class mppi::critics::VelocityDeadbandCritic
- * @brief Critic objective function for enforcing feasible constraints
+ * @class mppi::critics::PathAlignLegacyCritic
+ * @brief Critic objective function for aligning to the path. Note:
+ * High settings of this will follow the path more precisely, but also makes it
+ * difficult (or impossible) to deviate in the presence of dynamic obstacles.
+ * This is an important critic to tune and consider in tandem with Obstacle.
+ * This is the initial 'Legacy' implementation before replacement Oct 2023.
  */
-class VelocityDeadbandCritic : public CriticFunction
+class PathAlignLegacyCritic : public CriticFunction
 {
 public:
   /**
-   * @brief Initialize critic
-   */
+    * @brief Initialize critic
+    */
   void initialize() override;
 
   /**
-   * @brief Evaluate cost related to goal following
+   * @brief Evaluate cost related to trajectories path alignment
    *
    * @param costs [out] add reference cost values to this tensor
    */
   void score(CriticData & data) override;
 
 protected:
+  size_t offset_from_furthest_{0};
+  int trajectory_point_step_{0};
+  float threshold_to_consider_{0};
+  float max_path_occupancy_ratio_{0};
+  bool use_path_orientations_{false};
   unsigned int power_{0};
   float weight_{0};
-  std::vector<float> deadband_velocities_{0.0f, 0.0f, 0.0f};
 };
 
 }  // namespace mppi::critics
 
-#endif  // NAV2_MPPI_CONTROLLER__CRITICS__VELOCITY_DEADBAND_CRITIC_HPP_
+#endif  // NAV2_MPPI_CONTROLLER__CRITICS__PATH_ALIGN_LEGACY_CRITIC_HPP_
