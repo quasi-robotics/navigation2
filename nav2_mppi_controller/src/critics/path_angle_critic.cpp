@@ -25,7 +25,7 @@ void PathAngleCritic::initialize()
   auto getParentParam = parameters_handler_->getParamGetter(parent_name_);
   getParentParam(enforce_path_inversion_, "enforce_path_inversion", false);
   float vx_min;
-  getParentParam(vx_min, "vx_min", -0.35);
+  getParentParam(vx_min, "vx_min", -0.35, ParameterType::Static);
   if (fabs(vx_min) < 1e-6f) {  // zero
     reversing_allowed_ = false;
   } else if (vx_min < 0.0f) {   // reversing possible
