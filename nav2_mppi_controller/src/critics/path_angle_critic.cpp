@@ -24,7 +24,7 @@ void PathAngleCritic::initialize()
 {
   auto getParentParam = parameters_handler_->getParamGetter(parent_name_);
   float vx_min;
-  getParentParam(vx_min, "vx_min", -0.35);
+  getParentParam(vx_min, "vx_min", -0.35, ParameterType::Static);
   if (fabs(vx_min) < 1e-6f) {  // zero
     reversing_allowed_ = false;
   } else if (vx_min < 0.0f) {   // reversing possible
@@ -43,7 +43,7 @@ void PathAngleCritic::initialize()
     "max_angle_to_furthest", 0.785398f);
 
   int mode = 0;
-  getParam(mode, "mode", mode);
+  getParam(mode, "mode", mode, ParameterType::Static);
   mode_ = static_cast<PathAngleMode>(mode);
   if (!reversing_allowed_ && mode_ == PathAngleMode::NO_DIRECTIONAL_PREFERENCE) {
     mode_ = PathAngleMode::FORWARD_PREFERENCE;
