@@ -41,6 +41,8 @@ public:
    */
   void score(CriticData & data) override;
 
+  void reset();
+
   float getMaxVelConstraint() {return max_vel_;}
   float getMinVelConstraint() {return min_vel_;}
 
