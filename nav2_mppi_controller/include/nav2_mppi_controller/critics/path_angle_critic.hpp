@@ -77,6 +77,8 @@ protected:
 
   size_t offset_from_furthest_{0};
   bool reversing_allowed_{true};
+
+  int mode_int_{0};
   PathAngleMode mode_{0};
 
   unsigned int power_{0};
