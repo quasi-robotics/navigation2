@@ -42,9 +42,8 @@ void PathAngleCritic::initialize()
     max_angle_to_furthest_,
     "max_angle_to_furthest", 0.785398f);
 
-  int mode = 0;
-  getParam(mode, "mode", mode, ParameterType::Static);
-  mode_ = static_cast<PathAngleMode>(mode);
+  getParam(mode_int_, "mode", mode_int_, ParameterType::Dynamic);
+  mode_ = static_cast<PathAngleMode>(mode_int_);
   if (!reversing_allowed_ && mode_ == PathAngleMode::NO_DIRECTIONAL_PREFERENCE) {
     mode_ = PathAngleMode::FORWARD_PREFERENCE;
     RCLCPP_WARN(
@@ -52,6 +51,28 @@ void PathAngleCritic::initialize()
       "Path angle mode set to no directional preference, but controller's settings "
       "don't allow for reversing! Setting mode to forward preference.");
   }
+
+  parameters_handler_->addPostCallback([this](){
+    auto getParentParam = parameters_handler_->getParamGetter(parent_name_);
+    float vx_min;
+    getParentParam(vx_min, "vx_min", -0.35, ParameterType::Static);
+    if (fabs(vx_min) < 1e-6f) {  // zero
+      reversing_allowed_ = false;
+    } else if (vx_min < 0.0f) {   // reversing possible
+      reversing_allowed_ = true;
+    }
+
+    auto getParam = parameters_handler_->getParamGetter(name_);
+    getParam(mode_int_, "mode", mode_int_, ParameterType::Static);
+    mode_ = static_cast<PathAngleMode>(mode_int_);
+    if (!reversing_allowed_ && mode_ == PathAngleMode::NO_DIRECTIONAL_PREFERENCE) {
+      mode_ = PathAngleMode::FORWARD_PREFERENCE;
+      RCLCPP_WARN(
+          logger_,
+          "Path angle mode set to no directional preference, but controller's settings "
+          "don't allow for reversing! Setting mode to forward preference.");
+    }
+  });
 
   RCLCPP_INFO(
     logger_,
