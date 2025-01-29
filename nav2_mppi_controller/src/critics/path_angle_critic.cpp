@@ -62,8 +62,6 @@ void PathAngleCritic::initialize()
       reversing_allowed_ = true;
     }
 
-    auto getParam = parameters_handler_->getParamGetter(name_);
-    getParam(mode_int_, "mode", mode_int_, ParameterType::Static);
     mode_ = static_cast<PathAngleMode>(mode_int_);
     if (!reversing_allowed_ && mode_ == PathAngleMode::NO_DIRECTIONAL_PREFERENCE) {
       mode_ = PathAngleMode::FORWARD_PREFERENCE;
@@ -72,6 +70,11 @@ void PathAngleCritic::initialize()
           "Path angle mode set to no directional preference, but controller's settings "
           "don't allow for reversing! Setting mode to forward preference.");
     }
+
+    RCLCPP_INFO(
+      logger_,
+      "PathAngleCritic reconfigured with %d power and %f weight. Mode set to: %s",
+      power_, weight_, modeToStr(mode_).c_str());
   });
 
   RCLCPP_INFO(

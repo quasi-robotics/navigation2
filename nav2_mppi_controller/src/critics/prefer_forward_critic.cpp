@@ -28,6 +28,11 @@ void PreferForwardCritic::initialize()
     threshold_to_consider_,
     "threshold_to_consider", 0.5f);
 
+  parameters_handler_->addPostCallback([this](){
+    RCLCPP_INFO(
+      logger_, "PreferForwardCritic reconfigured with %d power and %f weight. Enabled: %d", power_, weight_, static_cast<int>(enabled_));
+  });
+
   RCLCPP_INFO(
     logger_, "PreferForwardCritic instantiated with %d power and %f weight.", power_, weight_);
 }
