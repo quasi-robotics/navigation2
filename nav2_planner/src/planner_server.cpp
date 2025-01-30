@@ -685,7 +685,13 @@ void PlannerServer::isPathValid(
     bool use_radius = costmap_ros_->getUseRadius();
 
     unsigned int cost = nav2_costmap_2d::FREE_SPACE;
-    for (unsigned int i = closest_point_index; i < request->path.poses.size(); ++i) {
+    unsigned int start_point_index = closest_point_index;
+    unsigned int end_point_index = request->path.poses.size();
+    if(request->num_points_to_validate < 0)
+      end_point_index += request->num_points_to_validate;
+    else if(request->num_points_to_validate > 0)
+      start_point_index += request->num_points_to_validate;
+    for (unsigned int i = start_point_index; i < end_point_index; ++i) {
       auto & position = request->path.poses[i].pose.position;
       if (use_radius) {
         if (costmap_->worldToMap(position.x, position.y, mx, my)) {
