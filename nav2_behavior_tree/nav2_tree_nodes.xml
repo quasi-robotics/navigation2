@@ -277,6 +277,7 @@
       <input_port name="server_timeout"> Server timeout </input_port>
       <input_port name="max_cost"> Maximum cost of the path </input_port>
       <input_port name="consider_unknown_as_obstacle"> If unknown cost is considered valid </input_port>
+      <input_port name="num_points"> Number of path points to validate </input_port>
     </Condition>
 
     <Condition ID="WouldAControllerRecoveryHelp">

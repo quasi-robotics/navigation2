@@ -67,7 +67,8 @@ public:
       BT::InputPort<unsigned int>("max_cost", 253, "Maximum cost of the path"),
       BT::InputPort<bool>(
           "consider_unknown_as_obstacle", false,
-          "Whether to consider unknown cost as obstacle")
+          "Whether to consider unknown cost as obstacle"),
+      BT::InputPort<int32_t>("num_points", 0, "Number of path points to validate")
     };
   }
 
