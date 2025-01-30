@@ -79,6 +79,7 @@ private:
   std::chrono::milliseconds server_timeout_;
   unsigned int max_cost_;
   bool consider_unknown_as_obstacle_;
+  int32_t number_of_points_to_validate_ {0};
 };
 
 }  // namespace nav2_behavior_tree

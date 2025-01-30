@@ -3,6 +3,7 @@
 nav_msgs/Path path
 uint8 max_cost 253
 bool consider_unknown_as_obstacle false
+int32 num_points_to_validate 0      # 0 - validate whole path, >0 - validate N points from start, <0 - do not validate N points from end
 ---
 bool is_valid
 int32[] invalid_pose_indices 
