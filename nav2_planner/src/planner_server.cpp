@@ -55,6 +55,7 @@ PlannerServer::PlannerServer(const rclcpp::NodeOptions & options)
   declare_parameter("expected_planner_frequency", 1.0);
   declare_parameter("action_server_result_timeout", 10.0);
   declare_parameter("costmap_update_timeout", 1.0);
+  declare_parameter("path_validation_start_offset", 0);
 
   get_parameter("planner_plugins", planner_ids_);
   if (planner_ids_ == default_ids_) {
@@ -157,6 +158,8 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & state)
   double costmap_update_timeout_dbl;
   get_parameter("costmap_update_timeout", costmap_update_timeout_dbl);
   costmap_update_timeout_ = rclcpp::Duration::from_seconds(costmap_update_timeout_dbl);
+
+  get_parameter("path_validation_start_offset", path_validation_start_offset_);
 
   // Create the action servers for path planning to a pose and through poses
   action_server_pose_ = std::make_unique<ActionServerToPose>(
@@ -685,13 +688,12 @@ void PlannerServer::isPathValid(
     bool use_radius = costmap_ros_->getUseRadius();
 
     unsigned int cost = nav2_costmap_2d::FREE_SPACE;
-    unsigned int start_point_index = closest_point_index + 1;
     unsigned int end_point_index = request->path.poses.size();
     if(request->num_points_to_validate < 0)
-      end_point_index -= -request->num_points_to_validate > end_point_index ? end_point_index : -request->num_points_to_validate;
-    else if(request->num_points_to_validate > 0 && (start_point_index + request->num_points_to_validate) < end_point_index)
-      end_point_index = start_point_index + request->num_points_to_validate + 1;
-    for (unsigned int i = start_point_index; i < end_point_index; ++i) {
+      end_point_index -= std::min((unsigned int)-request->num_points_to_validate, end_point_index);
+    else if(request->num_points_to_validate > 0 && (closest_point_index + request->num_points_to_validate) < end_point_index)
+      end_point_index = closest_point_index + request->num_points_to_validate + 1;
+    for (unsigned int i = closest_point_index + path_validation_start_offset_; i < end_point_index; ++i) {
       auto & position = request->path.poses[i].pose.position;
       if (use_radius) {
         if (costmap_->worldToMap(position.x, position.y, mx, my)) {

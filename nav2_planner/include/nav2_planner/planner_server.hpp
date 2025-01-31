@@ -246,6 +246,9 @@ protected:
   rclcpp::Duration costmap_update_timeout_;
   std::string planner_ids_concat_;
 
+  // Path validation
+  int path_validation_start_offset_ {0};
+
   // TF buffer
   std::shared_ptr<tf2_ros::Buffer> tf_;
 
