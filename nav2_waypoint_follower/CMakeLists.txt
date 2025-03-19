@@ -42,26 +42,39 @@ set(library_name ${executable_name}_core)
 add_library(${library_name} SHARED
   src/waypoint_follower.cpp
 )
-
-set(dependencies
-  rclcpp
-  rclcpp_action
-  rclcpp_lifecycle
-  rclcpp_components
-  nav_msgs
-  nav2_msgs
-  nav2_util
-  tf2_ros
-  nav2_core
-  pluginlib
-  image_transport
-  cv_bridge
-  OpenCV
-  robot_localization
+target_include_directories(${library_name} PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
+)
+target_link_libraries(${library_name} PUBLIC
+  ${geographic_msgs_TARGETS}
+  nav2_core::nav2_core
+  ${nav2_msgs_TARGETS}
+  nav2_util::nav2_util_core
+  ${nav_msgs_TARGETS}
+  pluginlib::pluginlib
+  rclcpp::rclcpp
+  rclcpp_action::rclcpp_action
+  rclcpp_lifecycle::rclcpp_lifecycle
+  tf2_ros::tf2_ros
+)
+target_link_libraries(${library_name} PRIVATE
+  rclcpp_components::component
 )
 
-ament_target_dependencies(${executable_name}
-  ${dependencies}
+# Extract the major version (first number before the dot)
+string(REGEX MATCH "^[0-9]+" ROS2_MAJOR_VERSION "${rclcpp_VERSION}")
+# Convert to integer
+if(ROS2_MAJOR_VERSION GREATER_EQUAL 29)
+    message(STATUS "ROS2_MAJOR_VERSION (${ROS2_MAJOR_VERSION}) is greater than 29 (Kilted and newer).")
+    target_link_libraries(${library_name} PUBLIC robot_localization::rl_lib)
+else()
+    message(STATUS "ROS2_MAJOR_VERSION (${ROS2_MAJOR_VERSION}) is NOT greater than 29 (Jazzy and older).")
+    ament_target_dependencies(${library_name} PUBLIC robot_localization)
+endif()
+
+add_executable(${executable_name}
+  src/main.cpp
 )
 
 target_link_libraries(${executable_name} ${library_name})
