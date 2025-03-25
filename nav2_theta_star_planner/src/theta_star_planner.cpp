@@ -188,9 +188,12 @@ void ThetaStarPlanner::getPlan(
   std::function<bool()> cancel_checker)
 {
   std::vector<coordsW> path;
-  if (planner_->isUnsafeToPlan()) {
+  if (!planner_->isStartSafe()) {
     global_path.poses.clear();
-    throw nav2_core::PlannerException("Either of the start or goal pose are an obstacle! ");
+    throw nav2_core::StartOccupied("Start pose is an obstacle! ");
+  } else if (!planner_->isGoalSafe()) {
+    global_path.poses.clear();
+    throw nav2_core::GoalOccupied("Goal pose is an obstacle! ");
   } else if (planner_->generatePath(path, cancel_checker)) {
     global_path = linearInterpolation(path, planner_->costmap_->getResolution());
   } else {
