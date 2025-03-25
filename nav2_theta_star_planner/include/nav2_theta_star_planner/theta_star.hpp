@@ -118,6 +118,14 @@ public:
     return !(isSafe(src_.x, src_.y)) || !(isSafe(dst_.x, dst_.y));
   }
 
+  bool isStartSafe() const {
+    return isSafe(src_.x, src_.y);
+  }
+
+  bool isGoalSafe() const {
+    return isSafe(dst_.x, dst_.y);
+  }
+
   /**
    * @brief Clear Start
    */
