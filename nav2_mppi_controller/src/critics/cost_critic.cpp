@@ -57,9 +57,9 @@ void CostCritic::initialize()
   RCLCPP_INFO(
     logger_,
     "InflationCostCritic instantiated with %d power and %f / %f weights. "
-    "Critic will collision check based on %s cost. Possible collision cost: %f",
+    "Critic will collision check based on %s cost. Possible collision cost: %f. Circumscribed radius: %f",
     power_, critical_cost_, weight_, consider_footprint_ ?
-    "footprint" : "circular", possible_collision_cost_);
+    "footprint" : "circular", possible_collision_cost_, circumscribed_radius_);
 }
 
 float CostCritic::findCircumscribedCost(
