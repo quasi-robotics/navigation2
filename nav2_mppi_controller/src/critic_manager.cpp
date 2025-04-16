@@ -47,7 +47,7 @@ void CriticManager::loadCritics()
   }
 
   critics_.clear();
-  for (auto name : critic_names_) {
+  for (const auto& name : critic_names_) {
     std::string fullname = getFullName(name);
     auto instance = std::unique_ptr<critics::CriticFunction>(
       loader_->createUnmanagedInstance(fullname));
@@ -61,7 +61,10 @@ void CriticManager::loadCritics()
 
 std::string CriticManager::getFullName(const std::string & name)
 {
-  return "mppi::critics::" + name;
+  if(name.find("::") == std::string::npos)
+    return "mppi::critics::" + name;
+  else
+    return name;
 }
 
 void CriticManager::evalTrajectoriesScores(
