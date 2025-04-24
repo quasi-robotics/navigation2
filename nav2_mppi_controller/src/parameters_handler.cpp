@@ -69,13 +69,14 @@ ParametersHandler::dynamicParamsCallback(
       callback != get_param_callbacks_.end())
     {
       callback->second(param, result);
-    } else {
+    } /*  cannot throw error on unknown parameter because this MPPI controller is not the only plugin within the Controller Manager node and there is no check for parameter namespace here
+    else {
       result.successful = false;
       if (!result.reason.empty()) {
         result.reason += "\n";
       }
       result.reason += "get_param_callback func for '" + param_name + "' not found.\n";
-    }
+    } */
   }
 
   for (auto & post_cb : post_callbacks_) {
