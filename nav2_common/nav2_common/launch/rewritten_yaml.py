@@ -14,10 +14,11 @@
 
 from collections.abc import Generator
 import tempfile
-from typing import Optional, TypeAlias, Union
+from typing import Optional, TypeAlias, Union, List
 
 import launch
 import yaml
+import pathlib
 
 YamlValue: TypeAlias = Union[str, int, float, bool]
 
@@ -100,24 +101,52 @@ class RewrittenYaml(launch.Substitution):  # type: ignore[misc]
         return ''
 
     def perform(self, context: launch.LaunchContext) -> str:
-        yaml_filename = launch.utilities.perform_substitutions(context, self.name)
         rewritten_yaml = tempfile.NamedTemporaryFile(mode='w', delete=False)
         param_rewrites, keys_rewrites, value_rewrites = self.resolve_rewrites(context)
 
-        with open(yaml_filename, 'r') as yaml_file:
-            data = yaml.safe_load(yaml_file)
+        all_data = {}
+        for files in self.name:
+            yaml_filenames = context.perform_substitution(files)
+            if not isinstance(yaml_filenames, List):
+                yaml_filenames = [yaml_filenames]
+            for yaml_filename in yaml_filenames:
+                yaml_filename = pathlib.Path(yaml_filename)
+                if not yaml_filename.is_file():
+                    continue
 
-        self.substitute_params(data, param_rewrites)
-        self.add_params(data, param_rewrites)
-        self.substitute_keys(data, keys_rewrites)
-        self.substitute_values(data, value_rewrites)
-        if self.__root_key is not None:
-            root_key = launch.utilities.perform_substitutions(context, self.__root_key)
-            if root_key:
-                data = {root_key: data}
-        yaml.dump(data, rewritten_yaml)
+                with open(yaml_filename, 'r') as yaml_file:
+                    data = yaml.safe_load(yaml_file)
+
+                self.substitute_params(data, param_rewrites)
+                self.add_params(data, param_rewrites)
+                self.substitute_keys(data, keys_rewrites)
+                self.substitute_values(data, value_rewrites)
+                if self.__root_key is not None:
+                    root_key = launch.utilities.perform_substitutions(context, self.__root_key)
+                    if root_key:
+                        data = {root_key: data}
+                self.merge(all_data, data)
+
+        yaml.dump(all_data, rewritten_yaml)
+
         rewritten_yaml.close()
         return rewritten_yaml.name
+
+    def merge(self, a, b, path=None):
+        "merges b into a"
+        if path is None: path = []
+        for key in b:
+            if key in a:
+                if isinstance(a[key], dict) and isinstance(b[key], dict):
+                    self.merge(a[key], b[key], path + [str(key)])
+                elif a[key] == b[key]:
+                    pass # same leaf value
+                else:
+                    a[key] = b[key]
+                    #raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+            else:
+                a[key] = b[key]
+        return a
 
     def resolve_rewrites(self, context: launch.LaunchContext) -> \
             tuple[dict[str, str], dict[str, str], dict[str, str]]:
