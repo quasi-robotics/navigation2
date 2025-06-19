@@ -99,10 +99,11 @@ public:
       node_->get_logger(), "%s service client: send async request",
       service_name_.c_str());
     auto future_result = client_->async_send_request(request);
-    if (spin_until_complete(future_result, timeout) != rclcpp::FutureReturnCode::SUCCESS) {
+    auto spin_result = spin_until_complete(future_result, timeout);
+    if (spin_result != rclcpp::FutureReturnCode::SUCCESS) {
       // Pending request must be manually cleaned up if execution is interrupted or timed out
       client_->remove_pending_request(future_result);
-      throw std::runtime_error(service_name_ + " service client: async_send_request failed");
+      throw std::runtime_error(service_name_ + " service client: async_send_request failed: " + std::to_string((int)spin_result) + ", timeout: " + std::to_string(timeout.count()));
     }
 
     return future_result.get();
