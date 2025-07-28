@@ -16,6 +16,8 @@ find_package(std_srvs REQUIRED)
 
 nav2_package()
 
+add_compile_options(-Wno-maybe-uninitialized)
+
 set(library_name ${PROJECT_NAME}_core)
 
 add_library(${library_name} SHARED
