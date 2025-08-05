@@ -24,7 +24,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node, SetParameter
 from launch_ros.descriptions import ParameterFile
-from nav2_common.launch import RewrittenYaml
+from nav2_common.launch import LaunchConfigAsBool, RewrittenYaml
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -39,14 +39,14 @@ def generate_launch_description() -> LaunchDescription:
     map_yaml_file = LaunchConfiguration('map')
     graph_filepath = LaunchConfiguration('graph')
     params_file = LaunchConfiguration('params_file')
-    autostart = LaunchConfiguration('autostart')
-    use_composition = LaunchConfiguration('use_composition')
-    use_respawn = LaunchConfiguration('use_respawn')
+    autostart = LaunchConfigAsBool('autostart')
+    use_composition = LaunchConfigAsBool('use_composition')
+    use_respawn = LaunchConfigAsBool('use_respawn')
 
     # Launch configuration variables specific to simulation
     rviz_config_file = LaunchConfiguration('rviz_config_file')
-    use_robot_state_pub = LaunchConfiguration('use_robot_state_pub')
-    use_rviz = LaunchConfiguration('use_rviz')
+    use_robot_state_pub = LaunchConfigAsBool('use_robot_state_pub')
+    use_rviz = LaunchConfigAsBool('use_rviz')
 
     remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
 
@@ -123,11 +123,11 @@ def generate_launch_description() -> LaunchDescription:
     rviz_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(launch_dir, 'rviz_launch.py')),
         condition=IfCondition(use_rviz),
-        launch_arguments={
-            'namespace': namespace,
-            'use_sim_time': 'True',
-            'rviz_config': rviz_config_file,
-        }.items(),
+        launch_arguments=[
+            ('namespace', namespace),
+            ('use_sim_time', 'True'),
+            ('rviz_config', rviz_config_file),
+        ],
     )
 
     bringup_cmd = IncludeLaunchDescription(
@@ -141,6 +141,8 @@ def generate_launch_description() -> LaunchDescription:
             'autostart': autostart,
             'use_composition': use_composition,
             'use_respawn': use_respawn,
+            'use_keepout_zones': 'False',  # Keepout zones not used in loopback simulation
+            'use_speed_zones': 'False',  # Speed zones not used in loopback simulation
             'use_localization': 'False',  # Don't use SLAM, AMCL
         }.items(),
     )
@@ -148,18 +150,19 @@ def generate_launch_description() -> LaunchDescription:
     loopback_sim_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(loopback_sim_dir, 'loopback_simulation.launch.py')),
-        launch_arguments={
-            'params_file': params_file,
-            'scan_frame_id': 'rplidar_link',
-        }.items(),
+        launch_arguments=[
+            ('params_file', params_file),
+            ('scan_frame_id', 'rplidar_link'),
+        ],
     )
 
     static_publisher_cmd = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0.0', '0.0', '0.0', '0', '0', '0',
-            'base_footprint', 'base_link']
+            '--x', '0.0', '--y', '0.0', '--z', '0.0',
+            '--roll', '0', '--pitch', '0', '--yaw', '0',
+            '--frame-id', 'base_footprint', '--child-frame-id', 'base_link']
     )
 
     configured_params = ParameterFile(

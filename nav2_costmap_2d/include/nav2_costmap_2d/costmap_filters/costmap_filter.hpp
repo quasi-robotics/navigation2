@@ -45,11 +45,11 @@
 #include <mutex>
 #include <memory>
 
-#include "geometry_msgs/msg/pose2_d.hpp"
+#include "geometry_msgs/msg/pose.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "nav2_costmap_2d/layer.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
-#include "nav2_util/service_server.hpp"
+#include "nav2_ros_common/service_server.hpp"
 
 namespace nav2_costmap_2d
 {
@@ -152,7 +152,7 @@ public:
   virtual void process(
     nav2_costmap_2d::Costmap2D & master_grid,
     int min_i, int min_j, int max_i, int max_j,
-    const geometry_msgs::msg::Pose2D & pose) = 0;
+    const geometry_msgs::msg::Pose & pose) = 0;
 
   /**
    * @brief: Resets costmap filter. Stops all subscriptions
@@ -181,9 +181,9 @@ protected:
    */
   bool transformPose(
     const std::string global_frame,
-    const geometry_msgs::msg::Pose2D & global_pose,
+    const geometry_msgs::msg::Pose & global_pose,
     const std::string mask_frame,
-    geometry_msgs::msg::Pose2D & mask_pose) const;
+    geometry_msgs::msg::Pose & mask_pose) const;
 
   /**
    * @brief: Convert from world coordinates to mask coordinates.
@@ -242,14 +242,13 @@ protected:
   /**
    * @brief: A service to enable/disable costmap filter
    */
-  nav2_util::ServiceServer<std_srvs::srv::SetBool,
-    std::shared_ptr<rclcpp_lifecycle::LifecycleNode>>::SharedPtr enable_service_;
+  nav2::ServiceServer<std_srvs::srv::SetBool>::SharedPtr enable_service_;
 
 private:
   /**
    * @brief: Latest robot position
    */
-  geometry_msgs::msg::Pose2D latest_pose_;
+  geometry_msgs::msg::Pose latest_pose_;
 
   /**
    * @brief: Mutex for locking filter's resources

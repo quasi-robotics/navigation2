@@ -17,6 +17,7 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(nav2_ros_common REQUIRED)
 
 nav2_package()
 
@@ -36,12 +37,14 @@ target_link_libraries(${library_name} PUBLIC
   ${nav_msgs_TARGETS}
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
+  nav2_ros_common::nav2_ros_common
   rclcpp::rclcpp
   rclcpp_action::rclcpp_action
   rclcpp_lifecycle::rclcpp_lifecycle
   ${sensor_msgs_TARGETS}
   tf2::tf2
   tf2_ros::tf2_ros
+  nav2_ros_common::nav2_ros_common
 )
 
 add_library(nav2_compute_path_to_pose_action_bt_node SHARED plugins/action/compute_path_to_pose_action.cpp)
@@ -209,8 +212,17 @@ list(APPEND plugin_libs nav2_get_current_pose_action_bt_node)
 add_library(nav2_pipeline_sequence_bt_node SHARED plugins/control/pipeline_sequence.cpp)
 list(APPEND plugin_libs nav2_pipeline_sequence_bt_node)
 
+add_library(nav2_nonblocking_sequence_bt_node SHARED plugins/control/nonblocking_sequence.cpp)
+list(APPEND plugin_libs nav2_nonblocking_sequence_bt_node)
+
 add_library(nav2_round_robin_node_bt_node SHARED plugins/control/round_robin_node.cpp)
 list(APPEND plugin_libs nav2_round_robin_node_bt_node)
+
+add_library(nav2_pause_resume_controller_bt_node SHARED plugins/control/pause_resume_controller.cpp)
+list(APPEND plugin_libs nav2_pause_resume_controller_bt_node)
+
+add_library(nav2_persistent_sequence_bt_node SHARED plugins/control/persistent_sequence.cpp)
+list(APPEND plugin_libs nav2_persistent_sequence_bt_node)
 
 add_library(nav2_single_trigger_bt_node SHARED plugins/decorator/single_trigger_node.cpp)
 list(APPEND plugin_libs nav2_single_trigger_bt_node)
@@ -261,6 +273,7 @@ foreach(bt_plugin ${plugin_libs})
     tf2_ros::tf2_ros
     ${std_msgs_TARGETS}
     ${std_srvs_TARGETS}
+    nav2_ros_common::nav2_ros_common
   )
   target_compile_definitions(${bt_plugin} PRIVATE BT_PLUGIN_EXPORT)
 endforeach()
@@ -280,6 +293,7 @@ add_executable(generate_nav2_tree_nodes_xml src/generate_nav2_tree_nodes_xml.cpp
 target_link_libraries(generate_nav2_tree_nodes_xml PRIVATE
   behaviortree_cpp::behaviortree_cpp
   nav2_util::nav2_util_core
+  nav2_ros_common::nav2_ros_common
 )
 # allow generate_nav2_tree_nodes_xml to find plugins_list.hpp
 target_include_directories(generate_nav2_tree_nodes_xml PRIVATE ${GENERATED_DIR})
@@ -328,6 +342,7 @@ ament_export_dependencies(
   std_srvs
   tf2
   tf2_ros
+  nav2_ros_common
 )
 ament_export_targets(${library_name})
 

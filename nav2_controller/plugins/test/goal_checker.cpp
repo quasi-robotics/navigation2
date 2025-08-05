@@ -39,7 +39,8 @@
 #include "nav2_controller/plugins/simple_goal_checker.hpp"
 #include "nav2_controller/plugins/stopped_goal_checker.hpp"
 #include "nav_2d_utils/conversions.hpp"
-#include "nav2_util/lifecycle_node.hpp"
+#include "nav2_util/geometry_utils.hpp"
+#include "nav2_ros_common/lifecycle_node.hpp"
 #include "eigen3/Eigen/Geometry"
 
 using nav2_controller::SimpleGoalChecker;
@@ -53,27 +54,27 @@ void checkMacro(
   bool expected_result)
 {
   gc.reset();
-  geometry_msgs::msg::Pose2D pose0, pose1;
-  pose0.x = x0;
-  pose0.y = y0;
-  pose0.theta = theta0;
-  pose1.x = x1;
-  pose1.y = y1;
-  pose1.theta = theta1;
-  nav_2d_msgs::msg::Twist2D v;
-  v.x = xv;
-  v.y = yv;
-  v.theta = thetav;
+
+  geometry_msgs::msg::Pose pose0, pose1;
+  pose0.position.x = x0;
+  pose0.position.y = y0;
+  pose0.position.z = 0.0;
+  pose0.orientation = nav2_util::geometry_utils::orientationAroundZAxis(theta0);
+
+  pose1.position.x = x1;
+  pose1.position.y = y1;
+  pose1.position.z = 0.0;
+  pose1.orientation = nav2_util::geometry_utils::orientationAroundZAxis(theta1);
+
+  geometry_msgs::msg::Twist v;
+  v.linear.x = xv;
+  v.linear.y = yv;
+  v.angular.z = thetav;
+
   if (expected_result) {
-    EXPECT_TRUE(
-      gc.isGoalReached(
-        nav_2d_utils::pose2DToPose(pose0),
-        nav_2d_utils::pose2DToPose(pose1), nav_2d_utils::twist2Dto3D(v)));
+    EXPECT_TRUE(gc.isGoalReached(pose0, pose1, v));
   } else {
-    EXPECT_FALSE(
-      gc.isGoalReached(
-        nav_2d_utils::pose2DToPose(pose0),
-        nav_2d_utils::pose2DToPose(pose1), nav_2d_utils::twist2Dto3D(v)));
+    EXPECT_FALSE(gc.isGoalReached(pose0, pose1, v));
   }
 }
 
@@ -97,42 +98,42 @@ void trueFalse(
   checkMacro(gc0, x0, y0, theta0, x1, y1, theta1, xv, yv, thetav, true);
   checkMacro(gc1, x0, y0, theta0, x1, y1, theta1, xv, yv, thetav, false);
 }
-class TestLifecycleNode : public nav2_util::LifecycleNode
+class TestLifecycleNode : public nav2::LifecycleNode
 {
 public:
   explicit TestLifecycleNode(const std::string & name)
-  : nav2_util::LifecycleNode(name)
+  : nav2::LifecycleNode(name)
   {
   }
 
-  nav2_util::CallbackReturn on_configure(const rclcpp_lifecycle::State &)
+  nav2::CallbackReturn on_configure(const rclcpp_lifecycle::State &)
   {
-    return nav2_util::CallbackReturn::SUCCESS;
+    return nav2::CallbackReturn::SUCCESS;
   }
 
-  nav2_util::CallbackReturn on_activate(const rclcpp_lifecycle::State &)
+  nav2::CallbackReturn on_activate(const rclcpp_lifecycle::State &)
   {
-    return nav2_util::CallbackReturn::SUCCESS;
+    return nav2::CallbackReturn::SUCCESS;
   }
 
-  nav2_util::CallbackReturn on_deactivate(const rclcpp_lifecycle::State &)
+  nav2::CallbackReturn on_deactivate(const rclcpp_lifecycle::State &)
   {
-    return nav2_util::CallbackReturn::SUCCESS;
+    return nav2::CallbackReturn::SUCCESS;
   }
 
-  nav2_util::CallbackReturn on_cleanup(const rclcpp_lifecycle::State &)
+  nav2::CallbackReturn on_cleanup(const rclcpp_lifecycle::State &)
   {
-    return nav2_util::CallbackReturn::SUCCESS;
+    return nav2::CallbackReturn::SUCCESS;
   }
 
-  nav2_util::CallbackReturn onShutdown(const rclcpp_lifecycle::State &)
+  nav2::CallbackReturn onShutdown(const rclcpp_lifecycle::State &)
   {
-    return nav2_util::CallbackReturn::SUCCESS;
+    return nav2::CallbackReturn::SUCCESS;
   }
 
-  nav2_util::CallbackReturn onError(const rclcpp_lifecycle::State &)
+  nav2::CallbackReturn onError(const rclcpp_lifecycle::State &)
   {
-    return nav2_util::CallbackReturn::SUCCESS;
+    return nav2::CallbackReturn::SUCCESS;
   }
 };
 

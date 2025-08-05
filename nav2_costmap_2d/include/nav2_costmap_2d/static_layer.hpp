@@ -154,6 +154,15 @@ protected:
   unsigned char interpretValue(unsigned char value);
 
   /**
+   * @brief Check if two double values are equal within a given epsilon
+   * @param a First double value
+   * @param b Second double value
+   * @param epsilon The tolerance for equality check
+   * @return True if the values are equal within the tolerance, false otherwise
+   */
+  bool isEqual(double a, double b, double epsilon);
+
+  /**
    * @brief Callback executed when a parameter change is detected
    * @param event ParameterEvent message
    */
@@ -182,8 +191,8 @@ protected:
   unsigned int width_{0};
   unsigned int height_{0};
 
-  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_sub_;
-  rclcpp::Subscription<map_msgs::msg::OccupancyGridUpdate>::SharedPtr map_update_sub_;
+  nav2::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_sub_;
+  nav2::Subscription<map_msgs::msg::OccupancyGridUpdate>::SharedPtr map_update_sub_;
 
   // Parameters
   std::string map_topic_;

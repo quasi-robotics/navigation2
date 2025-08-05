@@ -21,6 +21,7 @@ find_package(rviz_rendering REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(nav2_ros_common REQUIRED)
 find_package(yaml_cpp_vendor REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
@@ -78,6 +79,7 @@ target_link_libraries(${library_name} PUBLIC
   nav2_lifecycle_manager::nav2_lifecycle_manager_core
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
+  nav2_ros_common::nav2_ros_common
   nav2_route::route_server_core
   rclcpp::rclcpp
   rclcpp_action::rclcpp_action
@@ -137,6 +139,7 @@ ament_export_dependencies(
   rviz_rendering
   std_msgs
   tf2_geometry_msgs
+  nav2_ros_common
   visualization_msgs
 )
 

@@ -19,9 +19,9 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
-from launch_ros.actions import LoadComposableNodes, Node, SetParameter
+from launch_ros.actions import LoadComposableNodes, Node, PushROSNamespace, SetParameter
 from launch_ros.descriptions import ComposableNode, ParameterFile
-from nav2_common.launch import RewrittenYaml
+from nav2_common.launch import LaunchConfigAsBool, RewrittenYaml
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -30,14 +30,14 @@ def generate_launch_description() -> LaunchDescription:
 
     namespace = LaunchConfiguration('namespace')
     keepout_mask_yaml_file = LaunchConfiguration('keepout_mask')
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    autostart = LaunchConfiguration('autostart')
+    use_sim_time = LaunchConfigAsBool('use_sim_time')
+    autostart = LaunchConfigAsBool('autostart')
     params_file = LaunchConfiguration('params_file')
-    use_composition = LaunchConfiguration('use_composition')
+    use_composition = LaunchConfigAsBool('use_composition')
     container_name = LaunchConfiguration('container_name')
     container_name_full = (namespace, '/', container_name)
-    use_respawn = LaunchConfiguration('use_respawn')
-    use_keepout_zones = LaunchConfiguration('use_keepout_zones')
+    use_respawn = LaunchConfigAsBool('use_respawn')
+    use_keepout_zones = LaunchConfigAsBool('use_keepout_zones')
     log_level = LaunchConfiguration('log_level')
 
     lifecycle_nodes = ['keepout_filter_mask_server', 'keepout_costmap_filter_info_server']
@@ -116,6 +116,7 @@ def generate_launch_description() -> LaunchDescription:
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_composition])),
         actions=[
+            PushROSNamespace(namespace),
             SetParameter('use_sim_time', use_sim_time),
             Node(
                 condition=IfCondition(use_keepout_zones),
@@ -159,6 +160,7 @@ def generate_launch_description() -> LaunchDescription:
     load_composable_nodes = GroupAction(
         condition=IfCondition(use_composition),
         actions=[
+            PushROSNamespace(namespace),
             SetParameter('use_sim_time', use_sim_time),
             LoadComposableNodes(
                 target_container=container_name_full,

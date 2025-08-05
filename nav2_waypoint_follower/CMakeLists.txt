@@ -21,6 +21,7 @@ find_package(robot_localization REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(nav2_ros_common REQUIRED)
 
 nav2_package()
 
@@ -38,6 +39,7 @@ target_include_directories(${library_name} PUBLIC
 target_link_libraries(${library_name} PUBLIC
   ${geographic_msgs_TARGETS}
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
   ${nav_msgs_TARGETS}
@@ -72,6 +74,7 @@ target_include_directories(${executable_name} PRIVATE
 target_link_libraries(${executable_name} PRIVATE
   ${library_name}
   rclcpp::rclcpp
+  nav2_ros_common::nav2_ros_common
 )
 
 add_library(wait_at_waypoint SHARED plugins/wait_at_waypoint.cpp)
@@ -84,6 +87,7 @@ target_link_libraries(wait_at_waypoint PUBLIC
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
 )
 target_link_libraries(wait_at_waypoint PRIVATE
   pluginlib::pluginlib
@@ -100,6 +104,7 @@ target_link_libraries(photo_at_waypoint PUBLIC
   ${geometry_msgs_TARGETS}
   image_transport::image_transport
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   opencv_core
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
@@ -118,6 +123,7 @@ target_include_directories(input_at_waypoint PUBLIC
 target_link_libraries(input_at_waypoint PUBLIC
   ${geometry_msgs_TARGETS}
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
   ${std_msgs_TARGETS}
@@ -167,6 +173,7 @@ ament_export_dependencies(
   OpenCV
   pluginlib
   rclcpp
+  nav2_ros_common
   rclcpp_action
   rclcpp_lifecycle
   robot_localization

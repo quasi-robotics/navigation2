@@ -58,7 +58,7 @@ void KeepoutFilter::initializeFilter(
 {
   std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
-  rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
+  nav2::LifecycleNode::SharedPtr node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
@@ -70,8 +70,9 @@ void KeepoutFilter::initializeFilter(
     "KeepoutFilter: Subscribing to \"%s\" topic for filter info...",
     filter_info_topic_.c_str());
   filter_info_sub_ = node->create_subscription<nav2_msgs::msg::CostmapFilterInfo>(
-    filter_info_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
-    std::bind(&KeepoutFilter::filterInfoCallback, this, std::placeholders::_1));
+    filter_info_topic_,
+    std::bind(&KeepoutFilter::filterInfoCallback, this, std::placeholders::_1),
+    nav2::qos::LatchedSubscriptionQoS());
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
 
@@ -90,7 +91,7 @@ void KeepoutFilter::filterInfoCallback(
 {
   std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
-  rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
+  nav2::LifecycleNode::SharedPtr node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
@@ -125,8 +126,9 @@ void KeepoutFilter::filterInfoCallback(
     "KeepoutFilter: Subscribing to \"%s\" topic for filter mask...",
     mask_topic_.c_str());
   mask_sub_ = node->create_subscription<nav_msgs::msg::OccupancyGrid>(
-    mask_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
-    std::bind(&KeepoutFilter::maskCallback, this, std::placeholders::_1));
+    mask_topic_,
+    std::bind(&KeepoutFilter::maskCallback, this, std::placeholders::_1),
+    nav2::qos::LatchedSubscriptionQoS());
 }
 
 void KeepoutFilter::maskCallback(
@@ -134,7 +136,7 @@ void KeepoutFilter::maskCallback(
 {
   std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
-  rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
+  nav2::LifecycleNode::SharedPtr node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
@@ -158,7 +160,7 @@ void KeepoutFilter::maskCallback(
 void KeepoutFilter::process(
   nav2_costmap_2d::Costmap2D & master_grid,
   int min_i, int min_j, int max_i, int max_j,
-  const geometry_msgs::msg::Pose2D & pose)
+  const geometry_msgs::msg::Pose & pose)
 {
   std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
@@ -172,8 +174,8 @@ void KeepoutFilter::process(
 
   tf2::Transform tf2_transform;
   tf2_transform.setIdentity();  // initialize by identical transform
-  int mg_min_x, mg_min_y;  // masger_grid indexes of bottom-left window corner
-  int mg_max_x, mg_max_y;  // masger_grid indexes of top-right window corner
+  int mg_min_x, mg_min_y;  // master_grid indexes of bottom-left window corner
+  int mg_max_x, mg_max_y;  // master_grid indexes of top-right window corner
 
   const std::string mask_frame = filter_mask_->header.frame_id;
 
@@ -237,7 +239,7 @@ void KeepoutFilter::process(
     mg_min_y = std::max(min_j, mg_min_y);
 
     // Calculating bounds corresponding to top-right window (2) corner
-    // filter_mask_ -> master_grid intexes conversion
+    // filter_mask_ -> master_grid indexes conversion
     wx = filter_mask_->info.origin.position.x +
       filter_mask_->info.width * filter_mask_->info.resolution + half_cell_size;
     wy = filter_mask_->info.origin.position.y +
@@ -261,10 +263,12 @@ void KeepoutFilter::process(
   // Let's find the pose's cost if we are allowed to override the lethal cost
   bool is_pose_lethal = false;
   if (override_lethal_cost_) {
-    geometry_msgs::msg::Pose2D mask_pose;
+    geometry_msgs::msg::Pose mask_pose;
     if (transformPose(global_frame_, pose, filter_mask_->header.frame_id, mask_pose)) {
       unsigned int mask_robot_i, mask_robot_j;
-      if (worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i, mask_robot_j)) {
+      if (worldToMask(filter_mask_, mask_pose.position.x, mask_pose.position.y, mask_robot_i,
+        mask_robot_j))
+      {
         auto data = getMaskCost(filter_mask_, mask_robot_i, mask_robot_j);
         is_pose_lethal = (data == INSCRIBED_INFLATED_OBSTACLE || data == LETHAL_OBSTACLE);
         if (is_pose_lethal) {

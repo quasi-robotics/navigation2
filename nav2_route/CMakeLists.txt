@@ -19,6 +19,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(nanoflann REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(nav2_ros_common REQUIRED)
 
 nav2_package()
 
@@ -50,6 +51,7 @@ target_include_directories(${library_name}
 )
 target_link_libraries(${library_name} PUBLIC
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   nav2_costmap_2d::nav2_costmap_2d_core
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
@@ -98,6 +100,7 @@ target_include_directories(edge_scorers
 )
 target_link_libraries(edge_scorers PUBLIC
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   nav2_costmap_2d::nav2_costmap_2d_core
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
@@ -135,6 +138,7 @@ target_include_directories(route_operations
 )
 target_link_libraries(route_operations PUBLIC
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   nav2_costmap_2d::nav2_costmap_2d_core
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
@@ -167,6 +171,7 @@ target_include_directories(graph_file_loaders
 )
 target_link_libraries(graph_file_loaders PUBLIC
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   nav2_costmap_2d::nav2_costmap_2d_core
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
@@ -198,6 +203,7 @@ target_include_directories(graph_file_savers
 )
 target_link_libraries(graph_file_savers PUBLIC
   nav2_core::nav2_core
+  nav2_ros_common::nav2_ros_common
   nav2_costmap_2d::nav2_costmap_2d_core
   ${nav2_msgs_TARGETS}
   nav2_util::nav2_util_core
@@ -263,6 +269,7 @@ ament_export_dependencies(
   nav2_core
   nanoflann
   nlohmann_json
+  nav2_ros_common
 )
 ament_export_libraries(${library_name} edge_scorers route_operations graph_file_loaders graph_file_savers)
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
