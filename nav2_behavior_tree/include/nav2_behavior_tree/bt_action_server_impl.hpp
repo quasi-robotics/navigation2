@@ -21,6 +21,7 @@
 #include <limits>
 #include <memory>
 #include <set>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -42,9 +43,11 @@ BtActionServer<ActionT, NodeT>::BtActionServer(
   OnGoalReceivedCallback on_goal_received_callback,
   OnLoopCallback on_loop_callback,
   OnPreemptCallback on_preempt_callback,
-  OnCompletionCallback on_completion_callback)
+  OnCompletionCallback on_completion_callback,
+  const std::vector<std::string> & search_directories)
 : action_name_(action_name),
-  default_bt_xml_filename_(default_bt_xml_filename),
+  default_bt_xml_filename_or_id_(default_bt_xml_filename),
+  search_directories_(search_directories),
   plugin_lib_names_(plugin_lib_names),
   node_(parent),
   on_goal_received_callback_(on_goal_received_callback),
@@ -176,7 +179,7 @@ bool BtActionServer<ActionT, NodeT>::on_configure()
   int wait_for_service_timeout;
   node->get_parameter("wait_for_service_timeout", wait_for_service_timeout);
   wait_for_service_timeout_ = std::chrono::milliseconds(wait_for_service_timeout);
-  node->get_parameter("always_reload_bt_xml", always_reload_bt_xml_);
+  node->get_parameter("always_reload_bt_xml", always_reload_bt_);
 
   // Get error code id names to grab off of the blackboard
   error_code_name_prefixes_ = node->get_parameter("error_code_name_prefixes").as_string_array();
@@ -202,8 +205,8 @@ template<class ActionT, class NodeT>
 bool BtActionServer<ActionT, NodeT>::on_activate()
 {
   resetInternalError();
-  if (!loadBehaviorTree(default_bt_xml_filename_)) {
-    RCLCPP_ERROR(logger_, "Error loading XML file: %s", default_bt_xml_filename_.c_str());
+  if (!loadBehaviorTree(default_bt_xml_filename_or_id_)) {
+    RCLCPP_ERROR(logger_, "Error loading BT: %s", default_bt_xml_filename_or_id_.c_str());
     return false;
   }
   action_server_->activate();
@@ -226,7 +229,7 @@ bool BtActionServer<ActionT, NodeT>::on_cleanup()
   action_server_.reset();
   topic_logger_.reset();
   plugin_lib_names_.clear();
-  current_bt_xml_filename_.clear();
+  current_bt_file_or_id_.clear();
   blackboard_.reset();
   bt_->haltAllActions(tree_);
   bt_->resetGrootMonitor();
@@ -244,52 +247,84 @@ void BtActionServer<ActionT, NodeT>::setGrootMonitoring(
 }
 
 template<class ActionT, class NodeT>
-bool BtActionServer<ActionT, NodeT>::loadBehaviorTree(const std::string & bt_xml_filename)
+bool BtActionServer<ActionT, NodeT>::loadBehaviorTree(const std::string & bt_xml_filename_or_id)
 {
-  // Empty filename is default for backward compatibility
-  auto filename = bt_xml_filename.empty() ? default_bt_xml_filename_ : bt_xml_filename;
+  namespace fs = std::filesystem;
+
+  // Empty argument is default for backward compatibility
+  auto file_or_id =
+    bt_xml_filename_or_id.empty() ? default_bt_xml_filename_or_id_ : bt_xml_filename_or_id;
 
   // Use previous BT if it is the existing one and always reload flag is not set to true
-  if (!always_reload_bt_xml_ && current_bt_xml_filename_ == filename) {
-    RCLCPP_DEBUG(logger_, "BT will not be reloaded as the given xml is already loaded");
+  if (!always_reload_bt_ && current_bt_file_or_id_ == file_or_id) {
+    RCLCPP_DEBUG(logger_, "BT will not be reloaded as the given xml or ID is already loaded");
     return true;
   }
 
-  // if a new tree is created, than the Groot2 Publisher must be destroyed
+  // Reset any existing Groot2 monitoring
   bt_->resetGrootMonitor();
 
-  // Read the input BT XML from the specified file into a string
-  std::ifstream xml_file(filename);
-
-  if (!xml_file.good()) {
-    setInternalError(ActionT::Result::FAILED_TO_LOAD_BEHAVIOR_TREE,
-      "Couldn't open input XML file: " + filename);
-    return false;
+  bool is_bt_id = false;
+  if ((file_or_id.length() < 4) ||
+    file_or_id.substr(file_or_id.length() - 4) != ".xml")
+  {
+    is_bt_id = true;
   }
 
-  // Create the Behavior Tree from the XML input
+  std::unordered_set<std::string> used_bt_id;
+  for (const auto & directory : search_directories_) {
+    try {
+      for (const auto & entry : fs::directory_iterator(directory)) {
+        if (entry.path().extension() == ".xml") {
+          auto current_bt_id = bt_->extractBehaviorTreeID(entry.path().string());
+          if (current_bt_id.empty()) {
+            RCLCPP_ERROR(logger_, "Skipping BT file %s (missing ID)",
+              entry.path().string().c_str());
+            continue;
+          }
+          auto [it, inserted] = used_bt_id.insert(current_bt_id);
+          if (!inserted) {
+            RCLCPP_WARN(
+              logger_,
+              "Warning: Duplicate BT IDs found. Make sure to have all BT IDs unique! "
+              "ID: %s File: %s",
+              current_bt_id.c_str(), entry.path().string().c_str());
+          }
+          bt_->registerTreeFromFile(entry.path().string());
+        }
+      }
+    } catch (const std::exception & e) {
+      setInternalError(ActionT::Result::FAILED_TO_LOAD_BEHAVIOR_TREE,
+        "Exception reading behavior tree directory: " + std::string(e.what()));
+      return false;
+    }
+  }
+  // Try to load the main BT tree (by ID)
   try {
-    tree_ = bt_->createTreeFromFile(filename, blackboard_);
+    if(!is_bt_id) {
+      tree_ = bt_->createTreeFromFile(file_or_id, blackboard_);
+    } else {
+      tree_ = bt_->createTree(file_or_id, blackboard_);
+    }
+
     for (auto & subtree : tree_.subtrees) {
       auto & blackboard = subtree->blackboard;
       blackboard->set("node", client_node_);
       blackboard->set<std::chrono::milliseconds>("server_timeout", default_server_timeout_);
       blackboard->set<std::chrono::milliseconds>("bt_loop_duration", bt_loop_duration_);
       blackboard->set<std::chrono::milliseconds>(
-        "wait_for_service_timeout",
-        wait_for_service_timeout_);
+          "wait_for_service_timeout", wait_for_service_timeout_);
     }
   } catch (const std::exception & e) {
     setInternalError(ActionT::Result::FAILED_TO_LOAD_BEHAVIOR_TREE,
-      std::string("Exception when loading BT: ") + e.what());
+      std::string("Exception when creating BT tree from file: ") + e.what());
     return false;
   }
 
+  // Optional logging and monitoring
   topic_logger_ = std::make_unique<RosTopicLogger>(client_node_, tree_);
+  current_bt_file_or_id_ = file_or_id;
 
-  current_bt_xml_filename_ = filename;
-
-  // Enable monitoring with Groot2
   if (enable_groot_monitoring_) {
     bt_->addGrootMonitoring(&tree_, groot_server_port_);
     RCLCPP_DEBUG(

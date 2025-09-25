@@ -1,8 +1,9 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 project(opennav_docking)
 
 find_package(ament_cmake REQUIRED)
 find_package(angles REQUIRED)
+find_package(backward_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav2_common REQUIRED)
 find_package(nav2_graceful_controller REQUIRED)
@@ -17,6 +18,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -126,6 +128,7 @@ target_link_libraries(simple_charging_dock PUBLIC
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
   ${sensor_msgs_TARGETS}
+  ${std_srvs_TARGETS}
   tf2_geometry_msgs::tf2_geometry_msgs
   tf2_ros::tf2_ros
   nav2_ros_common::nav2_ros_common
@@ -154,6 +157,7 @@ target_link_libraries(simple_non_charging_dock PUBLIC
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
   ${sensor_msgs_TARGETS}
+  ${std_srvs_TARGETS}
   tf2_geometry_msgs::tf2_geometry_msgs
   tf2_ros::tf2_ros
 )
@@ -210,6 +214,7 @@ ament_export_dependencies(
   rclcpp_action
   rclcpp_lifecycle
   rcl_interfaces
+  std_srvs
   tf2_ros
   yaml-cpp
 )
