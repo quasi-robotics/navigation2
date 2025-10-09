@@ -105,8 +105,9 @@ void CostmapFilter::deactivate()
 
 void CostmapFilter::reset()
 {
-  resetFilter();
-  initializeFilter(filter_info_topic_);
+  // Do not feully reset all subscriptions and state in filters on each costmap clearing because of performance issues
+  //resetFilter();
+  //initializeFilter(filter_info_topic_);
   current_ = false;
 }
 
