@@ -66,7 +66,7 @@ public:
    * @brief Initialize the filter and subscribe to the info topic
    */
   void initializeFilter(
-    const std::string & filter_info_topic);
+    const std::string & filter_info_topic) override;
 
   /**
    * @brief Process the keepout layer at the current pose / bounds / grid
@@ -79,7 +79,7 @@ public:
   /**
    * @brief Reset the costmap filter / topic / info
    */
-  void resetFilter();
+  void resetFilter() override;
 
   /**
    * @brief If this filter is active

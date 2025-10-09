@@ -66,7 +66,7 @@ public:
    * @brief Initialize the filter and subscribe to the info topic
    */
   void initializeFilter(
-    const std::string & filter_info_topic);
+    const std::string & filter_info_topic) override;
 
   /**
    * @brief Update the bounds of the master costmap by this layer's update dimensions
@@ -93,13 +93,17 @@ public:
   /**
    * @brief Reset the costmap filter / topic / info
    */
-  void resetFilter();
+  void resetFilter() override;
 
   /**
    * @brief If this filter is active
    */
   bool isActive();
 
+  /**
+   * @brief Reset the layer
+   */
+  void reset() override;
 private:
   /**
    * @brief Callback for the filter information
