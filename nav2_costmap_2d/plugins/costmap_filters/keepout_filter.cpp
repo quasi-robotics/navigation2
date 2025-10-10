@@ -367,12 +367,6 @@ bool KeepoutFilter::isActive()
   return false;
 }
 
-void KeepoutFilter::reset()
-{
-  has_updated_data_ = true;
-  CostmapFilter::reset();
-}
-
 }  // namespace nav2_costmap_2d
 
 #include "pluginlib/class_list_macros.hpp"

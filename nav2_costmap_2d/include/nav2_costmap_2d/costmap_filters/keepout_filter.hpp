@@ -86,10 +86,6 @@ public:
    */
   bool isActive();
 
-  /**
-   * @brief Reset the layer
-   */
-  void reset() override;
 private:
   /**
    * @brief Callback for the filter information
