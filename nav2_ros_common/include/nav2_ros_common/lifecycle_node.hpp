@@ -67,7 +67,7 @@ public:
       rclcpp::Parameter(
         bond::msg::Constants::DISABLE_HEARTBEAT_TIMEOUT_PARAM, true));
 
-    bond_heartbeat_period = this->declare_or_get_parameter<double>("bond_heartbeat_period", 0.1);
+    bond_heartbeat_period = this->declare_or_get_parameter<double>("bond_heartbeat_period", 1.0);
     bool autostart_node = this->declare_or_get_parameter("autostart_node", false);
     if (autostart_node) {
       autostart();
@@ -407,7 +407,7 @@ protected:
   // Connection to tell that server is still up
   std::unique_ptr<rclcpp::PreShutdownCallbackHandle> rcl_preshutdown_cb_handle_{nullptr};
   std::shared_ptr<bond::Bond> bond_{nullptr};
-  double bond_heartbeat_period{0.1};
+  double bond_heartbeat_period{1.0};
   rclcpp::TimerBase::SharedPtr autostart_timer_;
 
 private:
