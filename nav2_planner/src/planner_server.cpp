@@ -657,6 +657,7 @@ void PlannerServer::isPathValid(
   std::shared_ptr<nav2_msgs::srv::IsPathValid::Response> response)
 {
   response->is_valid = true;
+  auto t_start = std::chrono::high_resolution_clock::now();
 
   if (request->path.poses.empty()) {
     response->is_valid = false;
@@ -688,6 +689,7 @@ void PlannerServer::isPathValid(
      * the footprint.
      */
     std::unique_lock<nav2_costmap_2d::Costmap2D::mutex_t> lock(*(costmap_->getMutex()));
+    auto t_locked = std::chrono::high_resolution_clock::now();
     unsigned int mx = 0;
     unsigned int my = 0;
 
@@ -733,7 +735,9 @@ void PlannerServer::isPathValid(
         break;
       }
     }
+    RCLCPP_INFO_STREAM(get_logger(), "isPathValid after locking: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_locked).count() << " micros");
   }
+  RCLCPP_INFO_STREAM(get_logger(), "isPathValid total: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_start).count() << " micros");
 }
 
 rcl_interfaces::msg::SetParametersResult
