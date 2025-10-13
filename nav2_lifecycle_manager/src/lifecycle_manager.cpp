@@ -46,6 +46,7 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
   declare_parameter("bond_respawn_max_duration", 10.0);
   declare_parameter("attempt_respawn_reconnection", true);
   subsystem_name_ = declare_parameter("subsystem_name", "Nav2");
+  bond_topic_name_ = declare_parameter("bond_topic", "bond");
 
   registerRclPreshutdownCallback();
 
@@ -236,7 +237,7 @@ LifecycleManager::createBondConnection(const std::string & node_name)
 
   if (bond_map_.find(node_name) == bond_map_.end() && bond_timeout_.count() > 0.0) {
     bond_map_[node_name] =
-      std::make_shared<bond::Bond>("bond", node_name, shared_from_this());
+      std::make_shared<bond::Bond>(bond_topic_name_, node_name, shared_from_this());
     bond_map_[node_name]->setHeartbeatTimeout(timeout_s);
     bond_map_[node_name]->setHeartbeatPeriod(1.0);
     bond_map_[node_name]->start();

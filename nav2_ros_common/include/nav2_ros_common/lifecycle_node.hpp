@@ -68,6 +68,7 @@ public:
         bond::msg::Constants::DISABLE_HEARTBEAT_TIMEOUT_PARAM, true));
 
     bond_heartbeat_period = this->declare_or_get_parameter<double>("bond_heartbeat_period", 1.0);
+    bond_topic_name_ = declare_parameter("bond_topic", "bond");
     bool autostart_node = this->declare_or_get_parameter("autostart_node", false);
     if (autostart_node) {
       autostart();
@@ -328,7 +329,7 @@ public:
       RCLCPP_INFO(get_logger(), "Creating bond (%s) to lifecycle manager.", this->get_name());
 
       bond_ = std::make_shared<bond::Bond>(
-        std::string("bond"),
+        bond_topic_name_,
         this->get_name(),
         shared_from_this());
 
@@ -408,6 +409,7 @@ protected:
   std::unique_ptr<rclcpp::PreShutdownCallbackHandle> rcl_preshutdown_cb_handle_{nullptr};
   std::shared_ptr<bond::Bond> bond_{nullptr};
   double bond_heartbeat_period{1.0};
+  std::string bond_topic_name_;
   rclcpp::TimerBase::SharedPtr autostart_timer_;
 
 private:
