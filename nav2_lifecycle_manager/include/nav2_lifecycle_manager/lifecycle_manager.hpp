@@ -259,6 +259,9 @@ protected:
   // Name of controlled subsystem
   std::string subsystem_name_;
 
+  // Name of bond topic
+  std::string bond_topic_name_;
+
   // Whether to automatically start up the system
   bool autostart_;
   bool attempt_respawn_reconnection_;
