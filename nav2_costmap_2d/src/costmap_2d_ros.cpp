@@ -525,7 +525,7 @@ Costmap2DROS::mapUpdateLoop(double frequency)
 
   rclcpp::WallRate r(frequency);    // 200ms by default
 
-  while (rclcpp::ok() && !map_update_thread_shutdown_) {
+  while (rclcpp::ok() && !map_update_thread_shutdown_) try {
     nav2_util::ExecutionTimer timer;
 
     // Execute after start() will complete plugins activation
@@ -577,6 +577,9 @@ Costmap2DROS::mapUpdateLoop(double frequency)
         "the loop actually took %.4f seconds", frequency, r.period());
     }
 #endif
+  }
+  catch(const std::exception & e) {
+    RCLCPP_ERROR(get_logger(), "Exception while updating map: %s.", e.what());
   }
 }
 
