@@ -57,7 +57,7 @@ void GracefulController::configure(
     params_->v_linear_min, params_->v_linear_max, params_->v_angular_max);
 
   // Initialize footprint collision checker
-  if(params_->use_collision_detection) {
+  if (params_->use_collision_detection) {
     collision_checker_ = std::make_unique<nav2_costmap_2d::
         FootprintCollisionChecker<nav2_costmap_2d::Costmap2D *>>(costmap_ros_->getCostmap());
   }
@@ -97,6 +97,7 @@ void GracefulController::activate()
   local_plan_pub_->on_activate();
   motion_target_pub_->on_activate();
   slowdown_pub_->on_activate();
+  param_handler_->activate();
 }
 
 void GracefulController::deactivate()
@@ -109,6 +110,7 @@ void GracefulController::deactivate()
   local_plan_pub_->on_deactivate();
   motion_target_pub_->on_deactivate();
   slowdown_pub_->on_deactivate();
+  param_handler_->deactivate();
 }
 
 geometry_msgs::msg::TwistStamped GracefulController::computeVelocityCommands(
@@ -343,12 +345,12 @@ bool GracefulController::simulateTrajectory(
   }
 
   double distance = std::numeric_limits<double>::max();
-  double resolution_ = costmap_ros_->getCostmap()->getResolution();
-  double dt = (params_->v_linear_max > 0.0) ? resolution_ / params_->v_linear_max : 0.0;
+  double resolution = costmap_ros_->getCostmap()->getResolution();
+  double dt = (params_->v_linear_max > 0.0) ? resolution / params_->v_linear_max : 0.0;
 
   // Set max iter to avoid infinite loop
   unsigned int max_iter = 3 *
-    std::hypot(motion_target.pose.position.x, motion_target.pose.position.y) / resolution_;
+    std::hypot(motion_target.pose.position.x, motion_target.pose.position.y) / resolution;
 
   // Generate path
   do{
@@ -395,7 +397,7 @@ bool GracefulController::simulateTrajectory(
 
     // Check if we reach the goal
     distance = nav2_util::geometry_utils::euclidean_distance(motion_target.pose, next_pose.pose);
-  }while(distance > resolution_ && trajectory.poses.size() < max_iter);
+  }while(distance > resolution && trajectory.poses.size() < max_iter);
 
   return true;
 }
@@ -405,8 +407,9 @@ geometry_msgs::msg::Twist GracefulController::rotateToTarget(double angle_to_tar
   geometry_msgs::msg::Twist vel;
   vel.linear.x = 0.0;
   vel.angular.z = params_->rotation_scaling_factor * angle_to_target * params_->v_angular_max;
-  vel.angular.z = std::copysign(1.0, vel.angular.z) * std::max(abs(vel.angular.z),
-      params_->v_angular_min_in_place);
+  vel.angular.z = std::copysign(1.0, vel.angular.z) * std::max(
+    abs(vel.angular.z),
+    params_->v_angular_min_in_place);
   return vel;
 }
 

@@ -88,6 +88,7 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
     0s,
     [this]() -> void {
       init_timer_->cancel();
+      createLifecyclePublishers();
       createLifecycleServiceClients();
       createLifecycleServiceServers();
       if (autostart_) {
@@ -144,10 +145,27 @@ LifecycleManager::managerCallback(
   }
 }
 
+void
+LifecycleManager::setState(const NodeState & state)
+{
+  managed_nodes_state_ = state;
+  publishIsActiveState();
+}
+
 inline bool
 LifecycleManager::isActive()
 {
   return managed_nodes_state_ == NodeState::ACTIVE;
+}
+
+void
+LifecycleManager::publishIsActiveState()
+{
+  if (is_active_pub_ && is_active_pub_->is_activated()) {
+    auto message = std::make_unique<std_msgs::msg::Bool>();
+    message->data = isActive();
+    is_active_pub_->publish(std::move(message));
+  }
 }
 
 void
@@ -220,11 +238,36 @@ LifecycleManager::createLifecycleServiceServers()
 }
 
 void
+LifecycleManager::createLifecyclePublishers()
+{
+  message("Creating and initializing lifecycle publishers");
+
+  is_active_pub_ = nav2::interfaces::create_publisher<std_msgs::msg::Bool>(
+    shared_from_this(),
+    get_name() + std::string("/managed_nodes_activated"),
+    nav2::qos::LatchedPublisherQoS(),
+    callback_group_);
+  is_active_pub_->on_activate();
+  // Publish the initial state once at startup
+  publishIsActiveState();
+}
+
+void
 LifecycleManager::destroyLifecycleServiceClients()
 {
   message("Destroying lifecycle service clients");
   for (auto & kv : node_map_) {
     kv.second.reset();
+  }
+}
+
+void
+LifecycleManager::destroyLifecyclePublishers()
+{
+  message("Destroying lifecycle publishers");
+  if (is_active_pub_) {
+    is_active_pub_->on_deactivate();
+    is_active_pub_.reset();
   }
 }
 
@@ -263,7 +306,8 @@ LifecycleManager::changeStateForNode(const std::string & node_name, std::uint8_t
 {
   message(transition_label_map_[transition] + node_name);
 
-  if (!node_map_[node_name]->change_state(transition, std::chrono::milliseconds(-1),
+  if (!node_map_[node_name]->change_state(
+      transition, std::chrono::milliseconds(-1),
       service_timeout_) ||
     !(node_map_[node_name]->get_state(service_timeout_) == transition_state_map_[transition]))
   {
@@ -321,7 +365,7 @@ void
 LifecycleManager::shutdownAllNodes()
 {
   message("Deactivate, cleanup, and shutdown nodes");
-  managed_nodes_state_ = NodeState::FINALIZED;
+  setState(NodeState::FINALIZED);
   changeStateForAllNodes(Transition::TRANSITION_DEACTIVATE);
   changeStateForAllNodes(Transition::TRANSITION_CLEANUP);
   changeStateForAllNodes(Transition::TRANSITION_UNCONFIGURED_SHUTDOWN);
@@ -335,11 +379,11 @@ LifecycleManager::startup()
     !changeStateForAllNodes(Transition::TRANSITION_ACTIVATE))
   {
     RCLCPP_ERROR(get_logger(), "Failed to bring up all requested nodes. Aborting bringup.");
-    managed_nodes_state_ = NodeState::UNKNOWN;
+    setState(NodeState::UNKNOWN);
     return false;
   }
   message("Managed nodes are active");
-  managed_nodes_state_ = NodeState::ACTIVE;
+  setState(NodeState::ACTIVE);
   createBondTimer();
   return true;
 }
@@ -350,11 +394,11 @@ LifecycleManager::configure()
   message("Configuring managed nodes...");
   if (!changeStateForAllNodes(Transition::TRANSITION_CONFIGURE)) {
     RCLCPP_ERROR(get_logger(), "Failed to configure all requested nodes. Aborting bringup.");
-    managed_nodes_state_ = NodeState::UNKNOWN;
+    setState(NodeState::UNKNOWN);
     return false;
   }
   message("Managed nodes are now configured");
-  managed_nodes_state_ = NodeState::INACTIVE;
+  setState(NodeState::INACTIVE);
   return true;
 }
 
@@ -364,11 +408,11 @@ LifecycleManager::cleanup()
   message("Cleaning up managed nodes...");
   if (!changeStateForAllNodes(Transition::TRANSITION_CLEANUP)) {
     RCLCPP_ERROR(get_logger(), "Failed to cleanup all requested nodes. Aborting cleanup.");
-    managed_nodes_state_ = NodeState::UNKNOWN;
+    setState(NodeState::UNKNOWN);
     return false;
   }
   message("Managed nodes have been cleaned up");
-  managed_nodes_state_ = NodeState::UNCONFIGURED;
+  setState(NodeState::UNCONFIGURED);
   return true;
 }
 
@@ -380,6 +424,7 @@ LifecycleManager::shutdown()
   message("Shutting down managed nodes...");
   shutdownAllNodes();
   destroyLifecycleServiceClients();
+  destroyLifecyclePublishers();
   message("Managed nodes have been shut down");
   return true;
 }
@@ -396,13 +441,13 @@ LifecycleManager::reset(bool hard_reset)
   {
     if (!hard_reset) {
       RCLCPP_ERROR(get_logger(), "Failed to reset nodes: aborting reset");
-      managed_nodes_state_ = NodeState::UNKNOWN;
+      setState(NodeState::UNKNOWN);
       return false;
     }
   }
 
   message("Managed nodes have been reset");
-  managed_nodes_state_ = NodeState::UNCONFIGURED;
+  setState(NodeState::UNCONFIGURED);
   return true;
 }
 
@@ -414,12 +459,12 @@ LifecycleManager::pause()
   message("Pausing managed nodes...");
   if (!changeStateForAllNodes(Transition::TRANSITION_DEACTIVATE)) {
     RCLCPP_ERROR(get_logger(), "Failed to pause nodes: aborting pause");
-    managed_nodes_state_ = NodeState::UNKNOWN;
+    setState(NodeState::UNKNOWN);
     return false;
   }
 
   message("Managed nodes have been paused");
-  managed_nodes_state_ = NodeState::INACTIVE;
+  setState(NodeState::INACTIVE);
   return true;
 }
 
@@ -429,12 +474,12 @@ LifecycleManager::resume()
   message("Resuming managed nodes...");
   if (!changeStateForAllNodes(Transition::TRANSITION_ACTIVATE)) {
     RCLCPP_ERROR(get_logger(), "Failed to resume nodes: aborting resume");
-    managed_nodes_state_ = NodeState::UNKNOWN;
+    setState(NodeState::UNKNOWN);
     return false;
   }
 
   message("Managed nodes are active");
-  managed_nodes_state_ = NodeState::ACTIVE;
+  setState(NodeState::ACTIVE);
   createBondTimer();
   return true;
 }
