@@ -137,6 +137,8 @@ void ObstacleLayer::onInitialize()
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
 
+  auto message_filter_node = std::make_shared<rclcpp::Node>(std::string(node->get_name())+"_message_filters", node->get_namespace(), node->get_node_options());
+
   // now we need to split the topics based on whitespace which we can use a stringstream for
   std::stringstream ss(topics_string);
 
@@ -269,7 +271,7 @@ void ObstacleLayer::onInitialize()
 
       auto filter = std::make_shared<tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>>(
         *sub, *tf_, global_frame_, 50,
-        node->get_node_logging_interface(),
+        message_filter_node->get_node_logging_interface(),
         node->get_node_clock_interface(),
         tf2::durationFromSec(transform_tolerance));
 
@@ -340,7 +342,7 @@ void ObstacleLayer::onInitialize()
 
       auto filter = std::make_shared<tf2_ros::MessageFilter<sensor_msgs::msg::PointCloud2>>(
         *sub, *tf_, global_frame_, 50,
-        node->get_node_logging_interface(),
+        message_filter_node->get_node_logging_interface(),
         node->get_node_clock_interface(),
         tf2::durationFromSec(transform_tolerance));
 
