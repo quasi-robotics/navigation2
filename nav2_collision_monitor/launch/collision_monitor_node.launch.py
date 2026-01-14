@@ -101,6 +101,7 @@ def generate_launch_description() -> LaunchDescription:
                 executable='lifecycle_manager',
                 name='lifecycle_manager_collision_monitor',
                 output='screen',
+                arguments=['--ros-args', '--disable-rosout-logs', '--disable-external-lib-logs'],
                 emulate_tty=True,  # https://github.com/ros2/launch/issues/188
                 parameters=[{'autostart': autostart},
                             {'node_names': lifecycle_nodes},
@@ -112,6 +113,7 @@ def generate_launch_description() -> LaunchDescription:
                 package='nav2_collision_monitor',
                 executable='collision_monitor',
                 output='screen',
+                arguments=['--ros-args', '--disable-rosout-logs', '--disable-external-lib-logs'],
                 emulate_tty=True,  # https://github.com/ros2/launch/issues/188
                 parameters=[configured_params],
                 remappings=remappings,
