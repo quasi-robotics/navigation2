@@ -137,7 +137,10 @@ void ObstacleLayer::onInitialize()
 
   global_frame_ = layered_costmap_->getGlobalFrameID();
 
-  auto message_filter_node = std::make_shared<rclcpp::Node>(std::string(node->get_name())+"_message_filters", node->get_namespace(), node->get_node_options());
+  std::vector<std::string> message_filter_node_arguments = node->get_node_options().arguments();
+  std::string new_name = std::string(node->get_name())+"_"+name_+"_mf";
+  nav2::replaceOrAddArgument(message_filter_node_arguments, "-r", "__node", new_name + ":" + "__node:=" + new_name);
+  auto message_filter_node = std::make_shared<rclcpp::Node>(new_name, node->get_namespace(), rclcpp::NodeOptions().arguments(message_filter_node_arguments));
 
   // now we need to split the topics based on whitespace which we can use a stringstream for
   std::stringstream ss(topics_string);

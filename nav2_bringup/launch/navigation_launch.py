@@ -171,7 +171,9 @@ def generate_launch_description() -> LaunchDescription:
                 respawn=use_respawn,
                 respawn_delay=2.0,
                 parameters=[configured_params],
-                arguments=['--ros-args', '--log-level', log_level],
+                arguments=['--ros-args', '--log-level', log_level,
+                           '--log-level', 'local_costmap.local_costmap_obstacle_layer_mf:=warn',
+                           '--log-level', 'local_costmap.local_costmap.local_costmap_floor_stvl_layer_mf:=warn'],
                 remappings=remappings + [('cmd_vel', 'cmd_vel_nav')],
             ),
             Node(
@@ -193,7 +195,9 @@ def generate_launch_description() -> LaunchDescription:
                 respawn=use_respawn,
                 respawn_delay=2.0,
                 parameters=[configured_params],
-                arguments=['--ros-args', '--log-level', log_level],
+                arguments=['--ros-args', '--log-level', log_level, 
+                           '--log-level', 'global_costmap.global_costmap_obstacle_layer_mf:=warn',
+                           '--log-level', 'global_costmap.global_costmap.global_costmap_floor_stvl_layer_mf:=warn'],
                 remappings=remappings,
             ),
             Node(
