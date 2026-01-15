@@ -49,6 +49,7 @@ bool transformPoseInTargetFrame(
   const double transform_timeout)
 {
   static rclcpp::Logger logger = rclcpp::get_logger("transformPoseInTargetFrame");
+  static rclcpp::Clock clock(RCL_STEADY_TIME);
 
   if (input_pose.header.frame_id == target_frame) {
     transformed_pose = input_pose;
@@ -61,8 +62,8 @@ bool transformPoseInTargetFrame(
       tf2::durationFromSec(transform_timeout));
     return true;
   } catch (tf2::LookupException & ex) {
-    RCLCPP_ERROR(
-      logger,
+    RCLCPP_ERROR_THROTTLE(
+      logger, clock, 1000,
       "No Transform available Error looking up target frame: %s\n", ex.what());
   } catch (tf2::ConnectivityException & ex) {
     RCLCPP_ERROR(
