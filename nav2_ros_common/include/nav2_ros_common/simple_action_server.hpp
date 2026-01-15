@@ -626,7 +626,7 @@ protected:
 
     if (is_active(handle)) {
       if (handle->is_canceling()) {
-        info_msg("Client requested to cancel the goal. Cancelling.");
+        debug_msg("Client requested to cancel the goal. Cancelling.");
         handle->canceled(result);
       } else {
         log_error_details_if_available(result);
