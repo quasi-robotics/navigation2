@@ -63,7 +63,7 @@ bool transformPoseInTargetFrame(
     return true;
   } catch (tf2::LookupException & ex) {
     RCLCPP_ERROR_THROTTLE(
-      logger, clock, 1000,
+      logger, clock, 10000,
       "No Transform available Error looking up target frame: %s\n", ex.what());
   } catch (tf2::ConnectivityException & ex) {
     RCLCPP_ERROR(
