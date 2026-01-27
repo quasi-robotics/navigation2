@@ -105,37 +105,38 @@ void BinaryFilter::initializeFilter(
 void BinaryFilter::filterInfoCallback(
   const nav2_msgs::msg::CostmapFilterInfo::SharedPtr msg)
 {
-  std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
-
   nav2::LifecycleNode::SharedPtr node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
 
-  if (!mask_sub_) {
-    RCLCPP_INFO(
-      logger_,
-      "BinaryFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
-  } else {
-    RCLCPP_WARN(
-      logger_,
-      "BinaryFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
-      filter_info_topic_.c_str());
-    // Resetting previous subscriber each time when new costmap filter information arrives
-    mask_sub_.reset();
+  {
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    if (!mask_sub_) {
+      RCLCPP_INFO(
+        logger_,
+        "BinaryFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
+    } else {
+      RCLCPP_WARN(
+        logger_,
+        "BinaryFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
+        filter_info_topic_.c_str());
+      // Resetting previous subscriber each time when new costmap filter information arrives
+      mask_sub_.reset();
+    }
+
+    if (msg->type != BINARY_FILTER) {
+      RCLCPP_ERROR(logger_, "BinaryFilter: Mode %i is not supported", msg->type);
+      return;
+    }
+
+    // Set base_ and multiplier_
+    base_ = msg->base;
+    multiplier_ = msg->multiplier;
+    // Set topic name to receive filter mask from
+    mask_topic_ = msg->filter_mask_topic;
   }
-
-  if (msg->type != BINARY_FILTER) {
-    RCLCPP_ERROR(logger_, "BinaryFilter: Mode %i is not supported", msg->type);
-    return;
-  }
-
-  // Set base_ and multiplier_
-  base_ = msg->base;
-  multiplier_ = msg->multiplier;
-  // Set topic name to receive filter mask from
-  mask_topic_ = msg->filter_mask_topic;
-
   // Setting new filter mask subscriber
   RCLCPP_INFO(
     logger_,

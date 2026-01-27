@@ -94,37 +94,38 @@ void KeepoutFilter::initializeFilter(
 void KeepoutFilter::filterInfoCallback(
   const nav2_msgs::msg::CostmapFilterInfo::SharedPtr msg)
 {
-  std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
-
   nav2::LifecycleNode::SharedPtr node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
 
-  if (!mask_sub_) {
-    RCLCPP_INFO(
-      logger_,
-      "KeepoutFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
-  } else {
-    RCLCPP_WARN(
-      logger_,
-      "KeepoutFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
-      filter_info_topic_.c_str());
-    // Resetting previous subscriber each time when new costmap filter information arrives
-    mask_sub_.reset();
+  {
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    if (!mask_sub_) {
+      RCLCPP_INFO(
+        logger_,
+        "KeepoutFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
+    } else {
+      RCLCPP_WARN(
+        logger_,
+        "KeepoutFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
+        filter_info_topic_.c_str());
+      // Resetting previous subscriber each time when new costmap filter information arrives
+      mask_sub_.reset();
+    }
+
+    // Checking that base and multiplier are set to their default values
+    if (msg->base != BASE_DEFAULT || msg->multiplier != MULTIPLIER_DEFAULT) {
+      RCLCPP_ERROR(
+        logger_,
+        "KeepoutFilter: For proper use of keepout filter base and multiplier"
+        " in CostmapFilterInfo message should be set to their default values (%f and %f)",
+        BASE_DEFAULT, MULTIPLIER_DEFAULT);
+    }
+
+    mask_topic_ = joinWithParentNamespace(msg->filter_mask_topic);
   }
-
-  // Checking that base and multiplier are set to their default values
-  if (msg->base != BASE_DEFAULT || msg->multiplier != MULTIPLIER_DEFAULT) {
-    RCLCPP_ERROR(
-      logger_,
-      "KeepoutFilter: For proper use of keepout filter base and multiplier"
-      " in CostmapFilterInfo message should be set to their default values (%f and %f)",
-      BASE_DEFAULT, MULTIPLIER_DEFAULT);
-  }
-
-  mask_topic_ = joinWithParentNamespace(msg->filter_mask_topic);
-
   // Setting new filter mask subscriber
   RCLCPP_INFO(
     logger_,

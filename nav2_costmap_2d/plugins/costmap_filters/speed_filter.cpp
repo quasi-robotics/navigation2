@@ -99,51 +99,52 @@ void SpeedFilter::initializeFilter(
 void SpeedFilter::filterInfoCallback(
   const nav2_msgs::msg::CostmapFilterInfo::SharedPtr msg)
 {
-  std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
-
   nav2::LifecycleNode::SharedPtr node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
 
-  if (!mask_sub_) {
-    RCLCPP_INFO(
-      logger_,
-      "SpeedFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
-  } else {
-    RCLCPP_WARN(
-      logger_,
-      "SpeedFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
-      filter_info_topic_.c_str());
-    // Resetting previous subscriber each time when new costmap filter information arrives
-    mask_sub_.reset();
+  {
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    if (!mask_sub_) {
+      RCLCPP_INFO(
+        logger_,
+        "SpeedFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
+    } else {
+      RCLCPP_WARN(
+        logger_,
+        "SpeedFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
+        filter_info_topic_.c_str());
+      // Resetting previous subscriber each time when new costmap filter information arrives
+      mask_sub_.reset();
+    }
+
+    // Set base_/multiplier_ or use speed limit in % of maximum speed
+    base_ = msg->base;
+    multiplier_ = msg->multiplier;
+    if (msg->type == SPEED_FILTER_PERCENT) {
+      // Using speed limit in % of maximum speed
+      percentage_ = true;
+      RCLCPP_INFO(
+        logger_,
+        "SpeedFilter: Using expressed in a percent from maximum speed"
+        "speed_limit = %f + filter_mask_data * %f",
+        base_, multiplier_);
+    } else if (msg->type == SPEED_FILTER_ABSOLUTE) {
+      // Using speed limit in m/s
+      percentage_ = false;
+      RCLCPP_INFO(
+        logger_,
+        "SpeedFilter: Using absolute speed_limit = %f + filter_mask_data * %f",
+        base_, multiplier_);
+    } else {
+      RCLCPP_ERROR(logger_, "SpeedFilter: Mode is not supported");
+      return;
+    }
+
+    mask_topic_ = joinWithParentNamespace(msg->filter_mask_topic);
   }
-
-  // Set base_/multiplier_ or use speed limit in % of maximum speed
-  base_ = msg->base;
-  multiplier_ = msg->multiplier;
-  if (msg->type == SPEED_FILTER_PERCENT) {
-    // Using speed limit in % of maximum speed
-    percentage_ = true;
-    RCLCPP_INFO(
-      logger_,
-      "SpeedFilter: Using expressed in a percent from maximum speed"
-      "speed_limit = %f + filter_mask_data * %f",
-      base_, multiplier_);
-  } else if (msg->type == SPEED_FILTER_ABSOLUTE) {
-    // Using speed limit in m/s
-    percentage_ = false;
-    RCLCPP_INFO(
-      logger_,
-      "SpeedFilter: Using absolute speed_limit = %f + filter_mask_data * %f",
-      base_, multiplier_);
-  } else {
-    RCLCPP_ERROR(logger_, "SpeedFilter: Mode is not supported");
-    return;
-  }
-
-  mask_topic_ = joinWithParentNamespace(msg->filter_mask_topic);
-
   // Setting new filter mask subscriber
   RCLCPP_INFO(
     logger_,
