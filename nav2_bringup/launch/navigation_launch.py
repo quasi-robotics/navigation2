@@ -34,6 +34,7 @@ def generate_launch_description() -> LaunchDescription:
     graph_filepath = LaunchConfiguration('graph')
     params_file = LaunchConfiguration('params_file')
     use_composition = LaunchConfigAsBool('use_composition')
+    use_intra_process_comms = LaunchConfigAsBool('use_intra_process_comms')
     container_name = LaunchConfiguration('container_name')
     container_name_full = (namespace, '/', container_name)
     use_respawn = LaunchConfigAsBool('use_respawn')
@@ -124,6 +125,12 @@ def generate_launch_description() -> LaunchDescription:
         'use_composition',
         default_value='False',
         description='Use composed bringup if True',
+    )
+
+    declare_use_intra_process_comms_cmd = DeclareLaunchArgument(
+        'use_intra_process_comms',
+        default_value='False',
+        description='Whether to use intra process communication',
     )
 
     declare_container_name_cmd = DeclareLaunchArgument(
@@ -307,7 +314,10 @@ def generate_launch_description() -> LaunchDescription:
                 output='screen',
                 arguments=['--ros-args', '--log-level', log_level,
                            '--ros-args', '--disable-rosout-logs', '--disable-external-lib-logs'],
-                parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}, configured_params],
+                parameters=[
+                    configured_params,
+                    {'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}
+                ],
             ),
         ],
     )
@@ -326,6 +336,7 @@ def generate_launch_description() -> LaunchDescription:
                         name='controller_server',
                         parameters=[configured_params],
                         remappings=remappings + [('cmd_vel', 'cmd_vel_nav')],
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='nav2_smoother',
@@ -333,6 +344,7 @@ def generate_launch_description() -> LaunchDescription:
                         name='smoother_server',
                         parameters=[configured_params],
                         remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='nav2_planner',
@@ -340,19 +352,23 @@ def generate_launch_description() -> LaunchDescription:
                         name='planner_server',
                         parameters=[configured_params],
                         remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='nav2_route',
                         plugin='nav2_route::RouteServer',
                         name='route_server',
                         parameters=[configured_params, {'graph_filepath': graph_filepath}],
-                        remappings=remappings),
+                        remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
+                    ),
                     ComposableNode(
                         package='nav2_behaviors',
                         plugin='behavior_server::BehaviorServer',
                         name='behavior_server',
                         parameters=[configured_params],
                         remappings=remappings + [('cmd_vel', 'cmd_vel_nav')],
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='nav2_bt_navigator',
@@ -360,6 +376,7 @@ def generate_launch_description() -> LaunchDescription:
                         name='bt_navigator',
                         parameters=[configured_params],
                         remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     # ComposableNode(
                     #     package='nav2_waypoint_follower',
@@ -367,6 +384,7 @@ def generate_launch_description() -> LaunchDescription:
                     #     name='waypoint_follower',
                     #     parameters=[configured_params],
                     #     remappings=remappings,
+                    #     extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     # ),
                     ComposableNode(
                         package='nav2_velocity_smoother',
@@ -375,6 +393,7 @@ def generate_launch_description() -> LaunchDescription:
                         parameters=[configured_params],
                         remappings=remappings
                         + [('cmd_vel', 'cmd_vel_nav')],
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='nav2_collision_monitor',
@@ -382,6 +401,7 @@ def generate_launch_description() -> LaunchDescription:
                         name='collision_monitor',
                         parameters=[configured_params],
                         remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='opennav_docking',
@@ -389,6 +409,7 @@ def generate_launch_description() -> LaunchDescription:
                         name='docking_server',
                         parameters=[configured_params],
                         remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='opennav_following',
@@ -396,12 +417,17 @@ def generate_launch_description() -> LaunchDescription:
                         name='following_server',
                         parameters=[configured_params],
                         remappings=remappings,
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                     ComposableNode(
                         package='nav2_lifecycle_manager',
                         plugin='nav2_lifecycle_manager::LifecycleManager',
                         name='lifecycle_manager_navigation',
-                        parameters=[{'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}, configured_params],
+                        parameters=[
+                            configured_params,
+                            {'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}
+                        ],
+                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                 ],
             ),
@@ -421,6 +447,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(declare_autostart_cmd)
     ld.add_action(declare_graph_file_cmd)
     ld.add_action(declare_use_composition_cmd)
+    ld.add_action(declare_use_intra_process_comms_cmd)
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)

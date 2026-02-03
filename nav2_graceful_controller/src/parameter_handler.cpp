@@ -28,25 +28,15 @@ using rcl_interfaces::msg::ParameterType;
 
 ParameterHandler::ParameterHandler(
   const nav2::LifecycleNode::SharedPtr & node, std::string & plugin_name,
-  rclcpp::Logger & logger, const double costmap_size_x)
+  rclcpp::Logger & logger)
 : nav2_util::ParameterHandler<Parameters>(node, logger)
 {
   plugin_name_ = plugin_name;
 
-  params_.transform_tolerance = node->declare_or_get_parameter(
-    plugin_name_ + ".transform_tolerance", 0.1);
   params_.min_lookahead = node->declare_or_get_parameter(
     plugin_name_ + ".min_lookahead", 0.25);
   params_.max_lookahead = node->declare_or_get_parameter(
     plugin_name_ + ".max_lookahead", 1.0);
-  params_.max_robot_pose_search_dist = node->declare_or_get_parameter(
-    plugin_name_ + ".max_robot_pose_search_dist", costmap_size_x / 2.0);
-  if (params_.max_robot_pose_search_dist < 0.0) {
-    RCLCPP_WARN(
-      logger_, "Max robot search distance is negative, setting to max to search"
-      " every point on path for the closest value.");
-    params_.max_robot_pose_search_dist = std::numeric_limits<double>::max();
-  }
 
   params_.k_phi = node->declare_or_get_parameter(
     plugin_name_ + ".k_phi", 2.0);
@@ -80,6 +70,12 @@ ParameterHandler::ParameterHandler(
     plugin_name_ + ".in_place_collision_resolution", 0.1);
   params_.use_collision_detection = node->declare_or_get_parameter(
     plugin_name_ + ".use_collision_detection", true);
+  params_.footprint_scaling_linear_vel = node->declare_or_get_parameter(
+    plugin_name_ + ".footprint_scaling_linear_vel", 0.5);
+  params_.footprint_scaling_factor = node->declare_or_get_parameter(
+    plugin_name_ + ".footprint_scaling_factor", 0.25);
+  params_.footprint_scaling_step = node->declare_or_get_parameter(
+    plugin_name_ + ".footprint_scaling_step", 0.1);
   if (params_.initial_rotation && params_.allow_backward) {
     RCLCPP_WARN(
       logger_, "Initial rotation and allow backward parameters are both true, "
@@ -140,9 +136,7 @@ ParameterHandler::updateParametersCallback(
       continue;
     }
     if (param_type == ParameterType::PARAMETER_DOUBLE) {
-      if (param_name == plugin_name_ + ".transform_tolerance") {
-        params_.transform_tolerance = parameter.as_double();
-      } else if (param_name == plugin_name_ + ".min_lookahead") {
+      if (param_name == plugin_name_ + ".min_lookahead") {
         params_.min_lookahead = parameter.as_double();
       } else if (param_name == plugin_name_ + ".max_lookahead") {
         params_.max_lookahead = parameter.as_double();
@@ -172,6 +166,12 @@ ParameterHandler::updateParametersCallback(
         params_.rotation_scaling_factor = parameter.as_double();
       } else if (param_name == plugin_name_ + ".in_place_collision_resolution") {
         params_.in_place_collision_resolution = parameter.as_double();
+      } else if (param_name == plugin_name_ + ".footprint_scaling_linear_vel") {
+        params_.footprint_scaling_linear_vel = parameter.as_double();
+      } else if (param_name == plugin_name_ + ".footprint_scaling_factor") {
+        params_.footprint_scaling_factor = parameter.as_double();
+      } else if (param_name == plugin_name_ + ".footprint_scaling_step") {
+        params_.footprint_scaling_step = parameter.as_double();
       }
     } else if (param_type == ParameterType::PARAMETER_BOOL) {
       if (param_name == plugin_name_ + ".initial_rotation") {

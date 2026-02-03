@@ -37,36 +37,27 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
 {
   RCLCPP_INFO(get_logger(), "Creating");
 
-  // The list of names is parameterized, allowing this module to be used with a different set
-  // of nodes
-  declare_parameter("node_names", rclcpp::PARAMETER_STRING_ARRAY);
-  declare_parameter("autostart", rclcpp::ParameterValue(false));
-  declare_parameter("bond_timeout", 4.0);
-  declare_parameter("service_timeout", 5.0);
-  declare_parameter("bond_respawn_max_duration", 10.0);
-  declare_parameter("attempt_respawn_reconnection", true);
-  subsystem_name_ = declare_parameter("subsystem_name", "Nav2");
-  bond_topic_name_ = declare_parameter("bond_topic", "bond");
+  // Node names are parameterized, allowing this module to be used with a different set of nodes
+  auto node = this;
+  node_names_ = nav2::declare_or_get_parameter<std::vector<std::string>>(node, "node_names");
+  autostart_ = nav2::declare_or_get_parameter(node, "autostart", false);
+  double bond_timeout_s = nav2::declare_or_get_parameter(node, "bond_timeout", 4.0);
+  double service_timeout_s = nav2::declare_or_get_parameter(node, "service_timeout", 5.0);
+  double respawn_timeout_s = nav2::declare_or_get_parameter(
+    node, "bond_respawn_max_duration", 10.0);
+  attempt_respawn_reconnection_ = nav2::declare_or_get_parameter(
+    node, "attempt_respawn_reconnection", true);
+  bond_heartbeat_period_ = nav2::declare_or_get_parameter(node, "bond_heartbeat_period", 1.0);
+  subsystem_name_ = nav2::declare_or_get_parameter<std::string>(node, "subsystem_name", "Nav2");
+  bond_topic_name_ = nav2::declare_or_get_parameter<std::string>(node, "bond_topic", "bond");
 
   registerRclPreshutdownCallback();
 
-  node_names_ = get_parameter("node_names").as_string_array();
-  get_parameter("autostart", autostart_);
-  double bond_timeout_s;
-  get_parameter("bond_timeout", bond_timeout_s);
   bond_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::duration<double>(bond_timeout_s));
-
-  double service_timeout_s;
-  get_parameter("service_timeout", service_timeout_s);
   service_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::duration<double>(service_timeout_s));
-
-  double respawn_timeout_s;
-  get_parameter("bond_respawn_max_duration", respawn_timeout_s);
   bond_respawn_max_duration_ = rclcpp::Duration::from_seconds(respawn_timeout_s);
-
-  get_parameter("attempt_respawn_reconnection", attempt_respawn_reconnection_);
 
   callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
 
@@ -282,7 +273,7 @@ LifecycleManager::createBondConnection(const std::string & node_name)
     bond_map_[node_name] =
       std::make_shared<bond::Bond>(bond_topic_name_, node_name, shared_from_this());
     bond_map_[node_name]->setHeartbeatTimeout(timeout_s);
-    bond_map_[node_name]->setHeartbeatPeriod(1.0);
+    bond_map_[node_name]->setHeartbeatPeriod(bond_heartbeat_period_);
     bond_map_[node_name]->start();
     if (
       !bond_map_[node_name]->waitUntilFormed(
