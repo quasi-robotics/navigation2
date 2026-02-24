@@ -97,8 +97,10 @@ public:
    */
   inline bool isSafe(const int & cx, const int & cy) const
   {
+    if(cx < 0 || static_cast<unsigned int>(cx) >= costmap_->getSizeInCellsX() || cy < 0 || static_cast<unsigned int>(cy) >= costmap_->getSizeInCellsY())
+      return false;
     return (costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) ||
-           costmap_->getCost(cx, cy) <= MAX_NON_OBSTACLE_COST;
+            costmap_->getCost(cx, cy) <= MAX_NON_OBSTACLE_COST;
   }
 
   /**
@@ -204,6 +206,8 @@ protected:
    */
   bool isSafe(const int & cx, const int & cy, double & cost) const
   {
+    if(cx < 0 || static_cast<unsigned int>(cx) >= costmap_->getSizeInCellsX() || cy < 0 || static_cast<unsigned int>(cy) >= costmap_->getSizeInCellsY())
+      return false;
     double curr_cost = getCost(cx, cy);
     if ((costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) ||
       curr_cost <= MAX_NON_OBSTACLE_COST)
