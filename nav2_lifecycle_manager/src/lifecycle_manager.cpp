@@ -96,7 +96,7 @@ LifecycleManager::LifecycleManager(const rclcpp::NodeOptions & options)
       service_thread_ = std::make_unique<nav2::NodeThread>(executor);
     });
   diagnostics_updater_.setHardwareID(subsystem_name_);
-  diagnostics_updater_.add("Nav2 Health", this, &LifecycleManager::CreateDiagnostic);
+  diagnostics_updater_.add(subsystem_name_ + " Health", this, &LifecycleManager::CreateDiagnostic);
 }
 
 LifecycleManager::~LifecycleManager()
