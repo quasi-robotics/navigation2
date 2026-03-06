@@ -87,7 +87,6 @@ ControllerServer::on_configure(const rclcpp_lifecycle::State & state)
       RCLCPP_INFO(
         get_logger(), "Created progress_checker : %s of type %s",
         params_->progress_checker_ids[i].c_str(), params_->progress_checker_types[i].c_str());
-      progress_checker->initialize(node, params_->progress_checker_ids[i]);
       progress_checkers_.insert({params_->progress_checker_ids[i], progress_checker});
     } catch (const std::exception & ex) {
       RCLCPP_FATAL(
@@ -116,7 +115,6 @@ ControllerServer::on_configure(const rclcpp_lifecycle::State & state)
       RCLCPP_INFO(
         get_logger(), "Created goal checker : %s of type %s",
         params_->goal_checker_ids[i].c_str(), params_->goal_checker_types[i].c_str());
-      goal_checker->initialize(node, params_->goal_checker_ids[i], costmap_ros_);
       goal_checkers_.insert({params_->goal_checker_ids[i], goal_checker});
     } catch (const pluginlib::PluginlibException & ex) {
       RCLCPP_FATAL(
@@ -142,8 +140,6 @@ ControllerServer::on_configure(const rclcpp_lifecycle::State & state)
       RCLCPP_INFO(
         get_logger(), "Created path handler : %s of type %s",
         params_->path_handler_ids[i].c_str(), params_->path_handler_types[i].c_str());
-      path_handler->initialize(node, get_logger(), params_->path_handler_ids[i], costmap_ros_,
-        costmap_ros_->getTfBuffer());
       path_handlers_.insert({params_->path_handler_ids[i], path_handler});
     } catch (const pluginlib::PluginlibException & ex) {
       RCLCPP_FATAL(
@@ -237,7 +233,20 @@ ControllerServer::on_activate(const rclcpp_lifecycle::State & /*state*/)
   tracking_feedback_pub_->on_activate();
   action_server_->activate();
   param_handler_->activate();
+
+  // activate goal checker, progress checker and path handler
   auto node = shared_from_this();
+  for (auto & pc : progress_checkers_) {
+    pc.second->initialize(node, pc.first);
+  }
+  for (auto & gc : goal_checkers_) {
+    gc.second->initialize(node, gc.first, costmap_ros_);
+  }
+  for (auto & ph : path_handlers_) {
+    ph.second->initialize(
+      node, get_logger(), ph.first, costmap_ros_,
+      costmap_ros_->getTfBuffer());
+  }
 
   // create bond connection
   createBond();
@@ -507,14 +516,7 @@ void ControllerServer::computeControl()
       }
 
       // Don't compute a trajectory until costmap is valid (after clear costmap)
-      rclcpp::Rate r(100);
-      auto waiting_start = now();
-      while (!costmap_ros_->isCurrent()) {
-        if (now() - waiting_start > params_->costmap_update_timeout) {
-          throw nav2_core::ControllerTimedOut("Costmap timed out waiting for update");
-        }
-        r.sleep();
-      }
+      double costmap_wait = waitForCostmap();
 
       updateGlobalPath();
 
@@ -529,8 +531,11 @@ void ControllerServer::computeControl()
       if (!loop_rate.sleep()) {
         RCLCPP_WARN(
           get_logger(),
-          "Control loop missed its desired rate of %.4f Hz. Current loop rate is %.4f Hz.",
-          params_->controller_frequency, 1 / cycle_duration.seconds());
+          "Control loop missed its desired rate of %.4f Hz. Current loop rate is %.4f Hz."
+          "%s",
+          params_->controller_frequency, 1 / cycle_duration.seconds(),
+          costmap_wait > 0.0 ?
+          (" Waited " + std::to_string(costmap_wait) + "s for costmap update.").c_str() : "");
         loop_rate.reset();
       }
     }
@@ -614,6 +619,23 @@ void ControllerServer::computeControl()
 
   // TODO(orduno) #861 Handle a pending preemption and set controller name
   action_server_->succeeded_current();
+}
+
+double ControllerServer::waitForCostmap()
+{
+  if (params_->costmap_update_timeout > rclcpp::Duration(0, 0)) {
+    auto waiting_start = now();
+    bool was_waiting = !costmap_ros_->isCurrent();
+    try {
+      costmap_ros_->waitUntilCurrent(params_->costmap_update_timeout);
+    } catch (const std::runtime_error & ex) {
+      throw nav2_core::ControllerTimedOut(ex.what());
+    }
+    if (was_waiting) {
+      return (now() - waiting_start).seconds();
+    }
+  }
+  return 0.0;
 }
 
 void ControllerServer::setPlannerPath(const nav_msgs::msg::Path & path)

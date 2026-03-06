@@ -22,6 +22,7 @@
 #include <algorithm>
 #include "rclcpp/rclcpp.hpp"
 #include "nav2_costmap_2d/costmap_2d_ros.hpp"
+#include "nav2_theta_star_planner/parameter_handler.hpp"
 
 const double INF_COST = DBL_MAX;
 const int UNKNOWN_COST = 255;
@@ -56,30 +57,17 @@ struct comp
   }
 };
 
-namespace theta_star
+namespace nav2_theta_star_planner
 {
 class ThetaStar
 {
 public:
   coordsM src_{}, dst_{};
   nav2_costmap_2d::Costmap2D * costmap_{};
-
-  /// weight on the costmap traversal cost
-  double w_traversal_cost_;
-  /// weight on the euclidean distance cost (used for calculations of g_cost)
-  double w_euc_cost_;
-  /// weight on the heuristic cost (used for h_cost calculations)
-  double w_heuristic_cost_;
-  /// parameter to set the number of adjacent nodes to be searched on
-  int how_many_corners_;
-  /// parameter to set weather the planner can plan through unknown space
-  bool allow_unknown_;
   /// the x-directional and y-directional lengths of the map respectively
   int size_x_, size_y_;
-  /// the interval at which the planner checks if it has been cancelled
-  int terminal_checking_interval_;
 
-  ThetaStar();
+  explicit ThetaStar(Parameters * params);
 
   ~ThetaStar() = default;
 
@@ -99,8 +87,8 @@ public:
   {
     if(cx < 0 || static_cast<unsigned int>(cx) >= costmap_->getSizeInCellsX() || cy < 0 || static_cast<unsigned int>(cy) >= costmap_->getSizeInCellsY())
       return false;
-    return (costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) ||
-            costmap_->getCost(cx, cy) <= MAX_NON_OBSTACLE_COST;
+    return (costmap_->getCost(cx, cy) == UNKNOWN_COST && params_->allow_unknown) ||
+           costmap_->getCost(cx, cy) <= MAX_NON_OBSTACLE_COST;
   }
 
   /**
@@ -154,6 +142,8 @@ protected:
   /// such that the data for all the nodes (in open and closed lists) could be stored
   /// consecutively in nodes_data_
   int index_generated_;
+
+  Parameters * params_;
 
   const coordsM moves[8] = {{0, 1},
     {0, -1},
@@ -209,13 +199,13 @@ protected:
     if(cx < 0 || static_cast<unsigned int>(cx) >= costmap_->getSizeInCellsX() || cy < 0 || static_cast<unsigned int>(cy) >= costmap_->getSizeInCellsY())
       return false;
     double curr_cost = getCost(cx, cy);
-    if ((costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) ||
+    if ((costmap_->getCost(cx, cy) == UNKNOWN_COST && params_->allow_unknown) ||
       curr_cost <= MAX_NON_OBSTACLE_COST)
     {
       if (costmap_->getCost(cx, cy) == UNKNOWN_COST) {
         curr_cost = OCCUPIED_COST - 1;
       }
-      cost += w_traversal_cost_ * curr_cost * curr_cost / MAX_NON_OBSTACLE_COST /
+      cost += params_->w_traversal_cost * curr_cost * curr_cost / MAX_NON_OBSTACLE_COST /
         MAX_NON_OBSTACLE_COST;
       return true;
     } else {
@@ -240,7 +230,7 @@ protected:
   inline double getTraversalCost(const int & cx, const int & cy)
   {
     double curr_cost = getCost(cx, cy);
-    return w_traversal_cost_ * curr_cost * curr_cost / MAX_NON_OBSTACLE_COST /
+    return params_->w_traversal_cost * curr_cost * curr_cost / MAX_NON_OBSTACLE_COST /
            MAX_NON_OBSTACLE_COST;
   }
 
@@ -251,7 +241,7 @@ protected:
    */
   inline double getEuclideanCost(const int & ax, const int & ay, const int & bx, const int & by)
   {
-    return w_euc_cost_ * std::hypot(ax - bx, ay - by);
+    return params_->w_euc_cost * std::hypot(ax - bx, ay - by);
   }
 
   /**
@@ -261,7 +251,7 @@ protected:
    */
   inline double getHCost(const int & cx, const int & cy)
   {
-    return w_heuristic_cost_ * std::hypot(cx - dst_.x, cy - dst_.y);
+    return params_->w_heuristic_cost * std::hypot(cx - dst_.x, cy - dst_.y);
   }
 
   /**
@@ -332,6 +322,6 @@ protected:
     queue_ = std::priority_queue<tree_node *, std::vector<tree_node *>, comp>();
   }
 };
-}   //  namespace theta_star
+}   //  namespace nav2_theta_star_planner
 
 #endif  //  NAV2_THETA_STAR_PLANNER__THETA_STAR_HPP_
