@@ -712,7 +712,7 @@ ObstacleLayer::raytraceFreespace(
   // get the map coordinates of the origin of the sensor
   unsigned int x0, y0;
   if (!worldToMap(ox, oy, x0, y0)) {
-    RCLCPP_WARN(
+    RCLCPP_DEBUG(
       logger_,
       "Sensor origin at (%.2f, %.2f) is out of map bounds (%.2f, %.2f) to (%.2f, %.2f). "
       "The costmap cannot raytrace for it.",

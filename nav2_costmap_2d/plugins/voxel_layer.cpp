@@ -293,7 +293,7 @@ void VoxelLayer::raytraceFreespace(
   double oz = clearing_observation.origin_.z;
 
   if (!worldToMap3DFloat(ox, oy, oz, sensor_x, sensor_y, sensor_z)) {
-    RCLCPP_WARN(
+    RCLCPP_DEBUG(
       logger_,
       "Sensor origin at (%.2f, %.2f %.2f) is out of map bounds "
       "(%.2f, %.2f, %.2f) to (%.2f, %.2f, %.2f). "
