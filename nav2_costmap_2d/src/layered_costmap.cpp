@@ -150,7 +150,7 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y, double robot_yaw)
 
   if (isOutofBounds(robot_x, robot_y)) {
     rclcpp::Clock clock{RCL_ROS_TIME};
-    RCLCPP_WARN_THROTTLE(
+    RCLCPP_DEBUG_THROTTLE(
       rclcpp::get_logger("nav2_costmap_2d"),
       clock, 5000,
       "Robot is out of bounds of the costmap");

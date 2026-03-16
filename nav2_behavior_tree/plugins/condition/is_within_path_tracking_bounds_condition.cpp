@@ -71,7 +71,7 @@ BT::NodeStatus IsWithinPathTrackingBoundsCondition::tick()
   if (is_within_position_bounds && is_within_heading_bounds) {
     return BT::NodeStatus::SUCCESS;
   } else {
-    RCLCPP_WARN_THROTTLE(
+    RCLCPP_DEBUG_THROTTLE(
       logger_,
       *clock_,
       1000,
