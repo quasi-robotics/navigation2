@@ -554,7 +554,7 @@ bool FollowingServer::getRefinedPose(geometry_msgs::msg::PoseStamped & pose)
         detected, detected, params_->fixed_frame,
           tf2::durationFromSec(params_->transform_tolerance));
     } catch (const tf2::TransformException & ex) {
-      RCLCPP_WARN(this->get_logger(), "Failed to transform detected object pose");
+      RCLCPP_WARN(this->get_logger(), "Failed to transform detected object pose: %s", ex.what());
       return false;
     }
   }
