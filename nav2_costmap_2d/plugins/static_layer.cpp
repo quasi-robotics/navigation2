@@ -138,7 +138,7 @@ void
 StaticLayer::reset()
 {
   has_updated_data_ = true;
-  current_ = false;
+  setCurrent(false);
 }
 
 void
@@ -207,6 +207,20 @@ StaticLayer::processMap(const nav_msgs::msg::OccupancyGrid & new_map)
       logger_,
       "StaticLayer: Resizing costmap to %d X %d at %f m/pix", size_x, size_y,
       new_map.info.resolution);
+
+    double fmod_x = std::fmod(new_map.info.origin.position.x, new_map.info.resolution);
+    double fmod_y = std::fmod(new_map.info.origin.position.y, new_map.info.resolution);
+
+    if (std::abs(fmod_x) > EPSILON || std::abs(fmod_y) > EPSILON) {
+      RCLCPP_WARN(
+        logger_,
+        "StaticLayer: Costmap origin coordinates are not perfectly aligned with the resolution. "
+        "This may cause misalignment aliasing between rolling and non-rolling costmaps.\n"
+        "Map origin: (%.f, %.f) | Resolution: %.f",
+        new_map.info.origin.position.x, new_map.info.origin.position.y,
+        new_map.info.resolution);
+    }
+
     layered_costmap_->resizeMap(
       size_x, size_y, new_map.info.resolution,
       new_map.info.origin.position.x,
@@ -248,7 +262,7 @@ StaticLayer::processMap(const nav_msgs::msg::OccupancyGrid & new_map)
   height_ = size_y_;
   has_updated_data_ = true;
 
-  current_ = true;
+  setCurrent(true);
 }
 
 void
@@ -298,7 +312,7 @@ StaticLayer::incomingMap(const nav_msgs::msg::OccupancyGrid::ConstSharedPtr & ne
   }
   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
   map_buffer_ = new_map;
-  current_ = false;
+  setCurrent(false);
 }
 
 void
@@ -476,7 +490,7 @@ StaticLayer::updateCosts(
     // restore the map region occupied by the polygon using cached data
     restoreMapRegionOccupiedByPolygon(map_region_to_restore);
   }
-  current_ = true;
+  setCurrent(true);
 }
 
 /**
@@ -545,7 +559,7 @@ StaticLayer::updateParametersCallback(
         width_ = size_x_;
         height_ = size_y_;
         has_updated_data_ = true;
-        current_ = false;
+        setCurrent(false);
       } else if (param_name == name_ + "." + "footprint_clearing_enabled") {
         footprint_clearing_enabled_ = parameter.as_bool();
       } else if (param_name == name_ + "." + "restore_cleared_footprint") {

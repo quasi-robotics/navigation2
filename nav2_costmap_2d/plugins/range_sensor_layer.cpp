@@ -59,7 +59,7 @@ RangeSensorLayer::RangeSensorLayer() {}
 
 void RangeSensorLayer::onInitialize()
 {
-  current_ = true;
+  setCurrent(true);
   was_reset_ = false;
   buffered_readings_ = 0;
   last_reading_time_ = clock_->now();
@@ -456,7 +456,7 @@ void RangeSensorLayer::updateBounds(
   resetRange();
 
   if (!enabled_) {
-    current_ = true;
+    setCurrent(true);
     return;
   }
 
@@ -470,7 +470,7 @@ void RangeSensorLayer::updateBounds(
         "No range readings received for %.2f seconds, while expected at least every %.2f seconds.",
         (clock_->now() - last_reading_time_).seconds(),
         no_readings_timeout_);
-      current_ = false;
+      setCurrent(false);
     }
   }
 }
@@ -516,9 +516,9 @@ void RangeSensorLayer::updateCosts(
   buffered_readings_ = 0;
 
   // if not current due to reset, set current now after clearing
-  if (!current_ && was_reset_) {
+  if (!isCurrent() && was_reset_) {
     was_reset_ = false;
-    current_ = true;
+    setCurrent(true);
   }
 }
 

@@ -105,7 +105,7 @@ void CostmapFilter::reset()
   // Do not feully reset all subscriptions and state in filters on each costmap clearing because of performance issues
   //resetFilter();
   //initializeFilter(filter_info_topic_);
-  current_ = false;
+  setCurrent(false);
 }
 
 void CostmapFilter::updateBounds(
@@ -131,7 +131,7 @@ void CostmapFilter::updateCosts(
   }
 
   process(master_grid, min_i, min_j, max_i, max_j, latest_pose_);
-  current_ = true;
+  setCurrent(true);
 }
 
 void CostmapFilter::enableCallback(
