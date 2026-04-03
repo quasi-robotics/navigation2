@@ -78,9 +78,11 @@ void CostmapFilter::onInitialize()
       0.1);
     transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
 
+    std::string name = name_;
+    std::replace(name.begin(), name.end(), '.', '_');
     // Costmap Filter enabling service
     enable_service_ = node->create_service<std_srvs::srv::SetBool>(
-      name_ + "/toggle_filter",
+      name + "/toggle_filter",
       std::bind(
         &CostmapFilter::enableCallback, this, std::placeholders::_1,
         std::placeholders::_2, std::placeholders::_3));
