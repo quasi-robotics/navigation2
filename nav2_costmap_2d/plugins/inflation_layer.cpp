@@ -80,6 +80,7 @@ InflationLayer::onInitialize()
       name_ + "." + "inflate_around_unknown", false);
     num_threads_ = node->declare_or_get_parameter(
       name_ + "." + "num_threads", -1);
+    inscribed_cost_ = node->declare_or_get_parameter<int>(name_ + "." + "inscribed_cost", nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE);
   }
 
   setCurrent(true);

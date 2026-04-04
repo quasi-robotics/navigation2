@@ -124,12 +124,12 @@ public:
     if (distance == 0) {
       cost = LETHAL_OBSTACLE;
     } else if (distance * resolution_ <= inscribed_radius_) {
-      cost = INSCRIBED_INFLATED_OBSTACLE;
+      cost = inscribed_cost_;
     } else {
       // make sure cost falls off by Euclidean distance
       double factor =
         exp(-1.0 * cost_scaling_factor_ * (distance * resolution_ - inscribed_radius_));
-      cost = static_cast<unsigned char>((INSCRIBED_INFLATED_OBSTACLE - 1) * factor);
+      cost = static_cast<unsigned char>((inscribed_cost_ - 1) * factor);
     }
     return cost;
   }
@@ -220,6 +220,7 @@ protected:
   unsigned int cell_inflation_radius_;
   int num_threads_;  // Number of OpenMP threads (-1 = auto)
   double resolution_;
+  int inscribed_cost_;
 
   // Cost LUT precision: 100 samples per cell provides smooth gradients
   static constexpr int COST_LUT_PRECISION = 100;
