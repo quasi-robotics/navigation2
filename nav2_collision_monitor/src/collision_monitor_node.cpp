@@ -613,29 +613,29 @@ void CollisionMonitor::notifyActionState(
         " Either due to data not published yet, or to lack of new data received within the"
         " sensor timeout, or if impossible to transform data to base frame");
     } else {
-      RCLCPP_INFO(
+      RCLCPP_DEBUG(
         get_logger(),
         "Robot to stop due to %s polygon",
         action_polygon->getName().c_str());
     }
   } else if (robot_action.action_type == SLOWDOWN) {
-    RCLCPP_INFO(
+    RCLCPP_DEBUG(
       get_logger(),
       "Robot to slowdown for %f percents due to %s polygon",
       action_polygon->getSlowdownRatio() * 100,
       action_polygon->getName().c_str());
   } else if (robot_action.action_type == LIMIT) {
-    RCLCPP_INFO(
+    RCLCPP_DEBUG(
       get_logger(),
       "Robot to limit speed due to %s polygon",
       action_polygon->getName().c_str());
   } else if (robot_action.action_type == APPROACH) {
-    RCLCPP_INFO(
+    RCLCPP_DEBUG(
       get_logger(),
       "Robot to approach for %f seconds away from collision",
       action_polygon->getTimeBeforeCollision());
   } else {  // robot_action.action_type == DO_NOTHING
-    RCLCPP_INFO(
+    RCLCPP_DEBUG(
       get_logger(),
       "Robot to continue normal operation");
   }
