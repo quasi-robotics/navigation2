@@ -536,6 +536,11 @@ bool Polygon::getParameters(
       logger_,
       "[%s]: Polygon points are not defined. Using dynamic subscription instead.",
       polygon_name_.c_str());
+  } catch (const rclcpp::exceptions::ParameterUninitializedException &) {
+    RCLCPP_INFO(
+        logger_,
+        "[%s]: Polygon points are not defined. Using dynamic subscription instead.",
+        polygon_name_.c_str());
   }
 
   if (!getCommonParameters(
