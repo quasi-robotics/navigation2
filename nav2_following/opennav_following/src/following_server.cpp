@@ -64,13 +64,13 @@ FollowingServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
     std::make_unique<opennav_docking::Controller>(node, tf2_buffer_, params_->fixed_frame,
       params_->base_frame);
 
-  if (params_->use_collision_detection) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "Collision detection is not supported in the following server. Please disable "
-      "the controller.use_collision_detection parameter.");
-    return nav2::CallbackReturn::FAILURE;
-  }
+  // if (params_->use_collision_detection) {
+  //   RCLCPP_ERROR(
+  //     get_logger(),
+  //     "Collision detection is not supported in the following server. Please disable "
+  //     "the controller.use_collision_detection parameter.");
+  //   return nav2::CallbackReturn::FAILURE;
+  // }
 
   // Setup filter
   filter_ = std::make_unique<opennav_docking::PoseFilter>(params_->filter_coef,
