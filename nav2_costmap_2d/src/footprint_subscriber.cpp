@@ -34,7 +34,7 @@ FootprintSubscriber::getFootprintRaw(
     return false;
   }
 
-  auto current_footprint = std::atomic_load(&footprint_);
+  auto current_footprint = footprint_.load();
   footprint = toPointVector(current_footprint->polygon);
   footprint_header = current_footprint->header;
 

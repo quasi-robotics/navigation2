@@ -91,7 +91,7 @@ protected:
   std::string robot_base_frame_;
   double transform_tolerance_;
   bool footprint_received_{false};
-  geometry_msgs::msg::PolygonStamped::ConstSharedPtr footprint_;
+  std::atomic<geometry_msgs::msg::PolygonStamped::ConstSharedPtr> footprint_;
   nav2::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr footprint_sub_;
 };
 

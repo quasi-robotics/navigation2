@@ -105,7 +105,7 @@ target_link_libraries(layers PUBLIC
 if(ENABLE_OPENMP)
   message(STATUS "OpenMP ENABLED for nav2_costmap_2d layers (${OpenMP_CXX_VERSION})")
   target_link_libraries(layers PRIVATE OpenMP::OpenMP_CXX)
-  target_compile_options(layers PRIVATE -fopenmp)
+  target_compile_options(layers PRIVATE -fopenmp -Wno-deprecated-declarations)
 else()
   message(STATUS "OpenMP DISABLED for nav2_costmap_2d layers")
   target_compile_options(layers PRIVATE -Wno-unknown-pragmas)
