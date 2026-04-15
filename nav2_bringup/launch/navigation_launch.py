@@ -306,7 +306,7 @@ def generate_launch_description() -> LaunchDescription:
                 arguments=['--ros-args', '--log-level', log_level,
                            '--ros-args', '--disable-rosout-logs', '--disable-external-lib-logs'],
                 remappings=remappings +
-                  [('cmd_vel', 'cmd_vel_manual')]
+                  [('cmd_vel', 'cmd_vel_collmon')]
             ),
             Node(
                 package='nav2_lifecycle_manager',
