@@ -58,6 +58,12 @@ PoseFilter::update(const geometry_msgs::msg::PoseStamped & measurement)
   return pose_;
 }
 
+void PoseFilter::reset() {
+  pose_.header.stamp = rclcpp::Time(0);
+  pose_.header.frame_id = "";
+}
+
+
 void PoseFilter::filter(double & filt, double meas)
 {
   filt = (1 - coef_) * filt + coef_ * meas;

@@ -41,6 +41,8 @@ public:
    */
   geometry_msgs::msg::PoseStamped update(const geometry_msgs::msg::PoseStamped & measurement);
 
+  void reset();
+
 protected:
   void filter(double & filt, double meas);
 

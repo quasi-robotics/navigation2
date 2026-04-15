@@ -201,6 +201,7 @@ void FollowingServer::followObject()
 
   // Reset the last detected dynamic pose timestamp so we start fresh for this action
   detected_dynamic_pose_.header.stamp = rclcpp::Time(0);
+  filter_->reset();
 
   try {
     auto pose_topic = goal->pose_topic;
