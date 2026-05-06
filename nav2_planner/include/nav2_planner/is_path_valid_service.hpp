@@ -247,13 +247,24 @@ private:
         costmap_to_check);
     }
 
+    // Determine the end index for validation based on lookahead distance
+    const auto & poses = request->path.poses;
+    unsigned int end_index = poses.size();
+    if (request->max_lookahead_distance > 0.0) {
+      auto end_it = nav2_util::geometry_utils::first_after_integrated_distance(
+        poses.begin() + closest_point_index, poses.end(),
+        request->max_lookahead_distance);
+      end_index = std::distance(poses.begin(), end_it);
+    }
+
     unsigned int cost = nav2_costmap_2d::FREE_SPACE;
-    unsigned int end_point_index = request->path.poses.size();
+
     if(request->num_points_to_validate < 0)
-      end_point_index -= std::min((unsigned int)-request->num_points_to_validate, end_point_index);
-    else if(request->num_points_to_validate > 0 && (closest_point_index + request->num_points_to_validate) < end_point_index)
-      end_point_index = closest_point_index + request->num_points_to_validate + 1;
-    for (unsigned int i = closest_point_index + path_validation_start_offset_; i < end_point_index; ++i) {
+      end_index -= std::min((unsigned int)-request->num_points_to_validate, end_index);
+    else if(request->num_points_to_validate > 0 && (closest_point_index + request->num_points_to_validate) < end_index)
+      end_index = closest_point_index + request->num_points_to_validate + 1;
+
+    for (unsigned int i = closest_point_index + path_validation_start_offset_; i < end_index; ++i) {
       auto & position = request->path.poses[i].pose.position;
       if (use_radius) {
         if (costmap_to_check->worldToMap(position.x, position.y, mx, my)) {
@@ -279,13 +290,13 @@ private:
       {
         response->is_valid = false;
         response->invalid_pose_indices.push_back(i);
-        if (!request->check_full_path) {
+        if (request->stop_at_first_collision) {
           break;
         }
       } else if (cost == nav2_costmap_2d::LETHAL_OBSTACLE || cost >= request->max_cost) {
         response->is_valid = false;
         response->invalid_pose_indices.push_back(i);
-        if (!request->check_full_path) {
+        if (request->stop_at_first_collision) {
           break;
         }
       }
