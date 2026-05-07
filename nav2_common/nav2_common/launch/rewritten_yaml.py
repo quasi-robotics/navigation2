@@ -138,7 +138,7 @@ class RewrittenYaml(launch.Substitution):
                         data = {root_key: data}
                 self.merge(all_data, data)
 
-        yaml.dump(all_data, rewritten_yaml)
+        yaml.dump(all_data, rewritten_yaml, width=float('inf'))
 
         rewritten_yaml.close()
         return rewritten_yaml.name
