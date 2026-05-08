@@ -206,10 +206,14 @@ InflationLayer::onFootprintChanged()
       inflation_radius_, inscribed_radius_);
   }
 
-  RCLCPP_DEBUG(
+  const auto circum_radius = layered_costmap_->getCircumscribedRadius();
+  RCLCPP_INFO(
     logger_, "InflationLayer::onFootprintChanged(): num footprint points: %zu,"
-    " inscribed_radius_ = %.3f, inflation_radius_ = %.3f",
-    layered_costmap_->getFootprint().size(), inscribed_radius_, inflation_radius_);
+    " inscribed_radius_ = %.3f (cost: %i), circumscribed_radius = %.3f (cost: %i), inflation_radius_ = %.3f (cost: %i)",
+    layered_costmap_->getFootprint().size(),
+    inscribed_radius_, static_cast<int>(computeCost(inscribed_radius_)),
+    circum_radius, static_cast<int>(computeCost(circum_radius)),
+    inflation_radius_, static_cast<int>(computeCost(inscribed_radius_)));
 }
 
 void
