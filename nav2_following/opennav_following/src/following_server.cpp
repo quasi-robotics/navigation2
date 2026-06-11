@@ -45,7 +45,7 @@ FollowingServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
   params_ = param_handler_->getParams();
 
   vel_publisher_ = std::make_unique<nav2_util::TwistPublisher>(node, "cmd_vel");
-  tf2_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
+  tf2_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock(), std::chrono::seconds(20));
 
   // Create odom subscriber for backward blind docking
   odom_sub_ = std::make_unique<nav2_util::OdomSmoother>(node, params_->odom_duration,
@@ -150,6 +150,7 @@ void FollowingServer::getPreemptedGoalIfRequested(
 {
   if (action_server->is_preempt_requested()) {
     goal = action_server->accept_pending_goal();
+    RCLCPP_DEBUG(get_logger(), "Preemption requested. Accepting new goal: %s", rclcpp_action::to_string(action_server->get_current_goal_id()).c_str());
   }
 }
 
@@ -159,7 +160,7 @@ bool FollowingServer::checkAndWarnIfCancelled(
   const std::string & name)
 {
   if (action_server->is_cancel_requested()) {
-    RCLCPP_WARN(get_logger(), "Goal was cancelled. Cancelling %s action", name.c_str());
+    RCLCPP_DEBUG(get_logger(), "Goal was cancelled. Cancelling %s action", name.c_str());
     return true;
   }
   return false;
@@ -171,7 +172,7 @@ bool FollowingServer::checkAndWarnIfPreempted(
   const std::string & name)
 {
   if (action_server->is_preempt_requested()) {
-    RCLCPP_WARN(get_logger(), "Goal was preempted. Cancelling %s action", name.c_str());
+    RCLCPP_DEBUG(get_logger(), "Goal was preempted. Cancelling %s action", name.c_str());
     return true;
   }
   return false;
@@ -190,6 +191,8 @@ void FollowingServer::followObject()
     RCLCPP_DEBUG(get_logger(), "Action server unavailable or inactive. Stopping.");
     return;
   }
+
+  RCLCPP_DEBUG(get_logger(), "Starting followObject with goal_id: %s", rclcpp_action::to_string(following_action_server_->get_current_goal_id()).c_str());
 
   if (checkAndWarnIfCancelled<FollowObject>(following_action_server_, "follow_object")) {
     following_action_server_->terminate_all();
@@ -349,8 +352,13 @@ bool FollowingServer::approachObject(
     publishFollowingFeedback(FollowObject::Feedback::CONTROLLING);
 
     // Stop if cancelled/preempted
-    if (checkAndWarnIfCancelled<FollowObject>(following_action_server_, "follow_object") ||
-      checkAndWarnIfPreempted<FollowObject>(following_action_server_, "follow_object"))
+    if(checkAndWarnIfPreempted<FollowObject>(following_action_server_, "follow_object")) {
+      std::shared_ptr<FollowObject::Goal> goal;
+      getPreemptedGoalIfRequested<FollowObject>(goal, following_action_server_);
+      num_retries_ = 0;
+      static_timer_initialized_ = false;
+    }
+    else if (checkAndWarnIfCancelled<FollowObject>(following_action_server_, "follow_object"))
     {
       return false;
     }
@@ -446,8 +454,13 @@ bool FollowingServer::rotateToObject(
       publishFollowingFeedback(FollowObject::Feedback::RETRY);
 
       // Stop if cancelled/preempted
-      if (checkAndWarnIfCancelled<FollowObject>(following_action_server_, "follow_object") ||
-        checkAndWarnIfPreempted<FollowObject>(following_action_server_, "follow_object"))
+      if(checkAndWarnIfPreempted<FollowObject>(following_action_server_, "follow_object")) {
+        std::shared_ptr<FollowObject::Goal> goal;
+        getPreemptedGoalIfRequested<FollowObject>(goal, following_action_server_);
+        num_retries_ = 0;
+        static_timer_initialized_ = false;
+      }
+      else if (checkAndWarnIfCancelled<FollowObject>(following_action_server_, "follow_object"))
       {
         return false;
       }
@@ -654,6 +667,8 @@ geometry_msgs::msg::PoseStamped FollowingServer::getPoseAtDistance(
   double dx = pose.pose.position.x - robot_pose.pose.position.x;
   double dy = pose.pose.position.y - robot_pose.pose.position.y;
   const double dist = std::hypot(dx, dy);
+  if(distance > dist)
+    distance = dist;
   geometry_msgs::msg::PoseStamped forward_pose = pose;
   forward_pose.pose.position.x -= distance * (dx / dist);
   forward_pose.pose.position.y -= distance * (dy / dist);
