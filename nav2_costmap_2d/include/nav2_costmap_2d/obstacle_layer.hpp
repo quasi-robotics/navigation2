@@ -40,6 +40,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -269,8 +270,17 @@ protected:
   std::vector<nav2_costmap_2d::Observation::ConstSharedPtr> static_clearing_observations_;
   std::vector<nav2_costmap_2d::Observation::ConstSharedPtr> static_marking_observations_;
 
+  struct DynamicObstacleCandidate
+  {
+    rclcpp::Time first_seen;
+    rclcpp::Time last_seen;
+  };
+
   bool rolling_window_;
   bool was_reset_;
+  double dynamic_obstacle_filter_duration_;
+  std::unordered_map<unsigned int, DynamicObstacleCandidate>
+    dynamic_obstacle_candidate_times_;
   nav2_costmap_2d::CombinationMethod combination_method_;
   bool allow_parameter_qos_overrides_;
 };

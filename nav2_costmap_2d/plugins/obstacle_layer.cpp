@@ -93,6 +93,8 @@ void ObstacleLayer::onInitialize()
     name_ + "." + "min_obstacle_height", 0.0);
   max_obstacle_height_ = node->declare_or_get_parameter(
     name_ + "." + "max_obstacle_height", 2.0);
+  dynamic_obstacle_filter_duration_ = node->declare_or_get_parameter(
+    name_ + "." + "dynamic_obstacle_filter_duration", 0.0);
   int combination_method_param = node->declare_or_get_parameter(
     name_ + "." + "combination_method", 1);
   topics_string = node->declare_or_get_parameter(
@@ -346,10 +348,21 @@ void ObstacleLayer::onInitialize()
 }
 
 rcl_interfaces::msg::SetParametersResult ObstacleLayer::validateParameterUpdatesCallback(
-  const std::vector<rclcpp::Parameter> & /*parameters*/)
+  const std::vector<rclcpp::Parameter> & parameters)
 {
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
+
+  for (const auto & parameter : parameters) {
+    if (parameter.get_name() == name_ + "." + "dynamic_obstacle_filter_duration") {
+      if (parameter.as_double() < 0.0) {
+        result.successful = false;
+        result.reason = "dynamic_obstacle_filter_duration must be non-negative";
+        return result;
+      }
+    }
+  }
+
   return result;
 }
 
@@ -377,6 +390,11 @@ ObstacleLayer::updateParametersCallback(
       {
         max_obstacle_height_ = parameter.as_double();
         setCurrent(false);
+      } else if (param_name == name_ + "." + "dynamic_obstacle_filter_duration" &&
+        dynamic_obstacle_filter_duration_ != parameter.as_double())
+      {
+        dynamic_obstacle_filter_duration_ = parameter.as_double();
+        dynamic_obstacle_candidate_times_.clear();
       }
     } else if (param_type == ParameterType::PARAMETER_BOOL) {
       if (param_name == name_ + "." + "enabled" && enabled_ != parameter.as_bool()) {
@@ -497,6 +515,10 @@ ObstacleLayer::updateBounds(
 
   bool current = true;
   std::vector<Observation::ConstSharedPtr> observations, clearing_observations;
+  const bool use_dynamic_filter = dynamic_obstacle_filter_duration_ > 0.0;
+  const rclcpp::Duration dynamic_filter_duration = rclcpp::Duration::from_seconds(
+    dynamic_obstacle_filter_duration_);
+  const rclcpp::Time now = clock_->now();
 
   // get the marking observations
   current = current && getMarkingObservations(observations);
@@ -586,6 +608,27 @@ ObstacleLayer::updateBounds(
       }
 
       unsigned int index = getIndex(mx, my);
+      if (use_dynamic_filter &&
+        (obs.cloud_.header.stamp.sec != 0u || obs.cloud_.header.stamp.nanosec != 0u))
+      {
+        rclcpp::Time stamp(obs.cloud_.header.stamp);
+        auto it = dynamic_obstacle_candidate_times_.find(index);
+        if (it == dynamic_obstacle_candidate_times_.end()) {
+          dynamic_obstacle_candidate_times_[index] = {stamp, stamp};
+          continue;
+        }
+
+        // If the obstacle candidate reappears after a long gap, restart the timer.
+        if ((stamp - it->second.last_seen) > dynamic_filter_duration) {
+          it->second.first_seen = stamp;
+        }
+        it->second.last_seen = stamp;
+
+        if ((stamp - it->second.first_seen) < dynamic_filter_duration) {
+          continue;
+        }
+      }
+
       costmap_[index] = LETHAL_OBSTACLE;
       touch(px, py, min_x, min_y, max_x, max_y);
     }
@@ -868,6 +911,7 @@ ObstacleLayer::reset()
 {
   resetMaps();
   resetBuffersLastUpdated();
+  dynamic_obstacle_candidate_times_.clear();
   setCurrent(false);
   was_reset_ = true;
 }

@@ -118,8 +118,6 @@ public:
 
 protected:
   std::shared_ptr<nav2_costmap_2d::ObstacleLayer> obstacle_layer_;
-
-private:
   std::shared_ptr<TestLifecycleNode> node_;
   nav2_costmap_2d::LayeredCostmap layers_;
 };
@@ -165,6 +163,29 @@ TEST_F(ObstacleLayerTest, testPointBeyondCellMaxRange)
   unsigned char cost = obstacle_layer_->getCost(mx, my);
 
   ASSERT_NE(cost, nav2_costmap_2d::LETHAL_OBSTACLE);
+}
+
+/**
+ * Test dynamic obstacles require sustained visibility before being written
+ */
+TEST_F(ObstacleLayerTest, testDynamicObstacleRequiresSustainedVisibility)
+{
+  node_->set_parameter(rclcpp::Parameter("obstacles.dynamic_obstacle_filter_duration", 1.0));
+  const auto first_stamp = node_->now();
+  addObservation(obstacle_layer_, 0.55, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, true, 100.0, 0.0, 1.0, 0.0, first_stamp);
+  update();
+
+  unsigned int mx, my;
+  obstacle_layer_->worldToMap(0.55, 0.0, mx, my);
+  ASSERT_NE(obstacle_layer_->getCost(mx, my), nav2_costmap_2d::LETHAL_OBSTACLE);
+
+  const auto second_stamp = first_stamp + rclcpp::Duration::from_seconds(1.1);
+  addObservation(obstacle_layer_, 0.55, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, true, 100.0, 0.0, 1.0, 0.0, second_stamp);
+  update();
+
+  ASSERT_EQ(obstacle_layer_->getCost(mx, my), nav2_costmap_2d::LETHAL_OBSTACLE);
 }
 
 /**
