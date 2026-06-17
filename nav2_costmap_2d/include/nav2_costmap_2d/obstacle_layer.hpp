@@ -40,6 +40,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -227,6 +228,21 @@ protected:
     double * max_x,
     double * max_y);
 
+  /**
+   * @brief Reset pending obstacle confirmations
+   */
+  void resetObstacleFilter();
+
+  /**
+   * @brief Check if an obstacle hit has been visible long enough to mark
+   */
+  bool isObstacleConfirmed(unsigned int index, double observed_time);
+
+  /**
+   * @brief Remove pending obstacle confirmations outside the filter window
+   */
+  void pruneExpiredObstacleCandidates(double current_time);
+
   std::vector<geometry_msgs::msg::Point> transformed_footprint_;
   bool footprint_clearing_enabled_;
   /**
@@ -269,6 +285,16 @@ protected:
   std::vector<nav2_costmap_2d::Observation::ConstSharedPtr> static_clearing_observations_;
   std::vector<nav2_costmap_2d::Observation::ConstSharedPtr> static_marking_observations_;
 
+  struct ObstacleCandidate
+  {
+    double first_seen{0.0};
+    double last_seen{0.0};
+    bool initialized{false};
+    bool seen_this_update{false};
+  };
+
+  std::unordered_map<unsigned int, ObstacleCandidate> obstacle_candidates_;
+  double obstacle_filter_time_;
   bool rolling_window_;
   bool was_reset_;
   nav2_costmap_2d::CombinationMethod combination_method_;

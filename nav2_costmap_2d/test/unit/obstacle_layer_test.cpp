@@ -14,9 +14,11 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <thread>
 
 #include "nav2_costmap_2d/cost_values.hpp"
 #include "nav2_costmap_2d/layered_costmap.hpp"
@@ -75,7 +77,7 @@ public:
 class ObstacleLayerTest : public ::testing::Test
 {
 public:
-  explicit ObstacleLayerTest(double resolution = 0.1)
+  explicit ObstacleLayerTest(double resolution = 0.1, double obstacle_filter_time = 0.0)
   : layers_("frame", false, false)
   {
     node_ = std::make_shared<TestLifecycleNode>("obstacle_cell_distance_test_node");
@@ -90,6 +92,8 @@ public:
     node_->declare_parameter("trinary_costmap", rclcpp::ParameterValue(true));
     node_->declare_parameter("transform_tolerance", rclcpp::ParameterValue(0.3));
     node_->declare_parameter("observation_sources", rclcpp::ParameterValue(std::string("")));
+    node_->declare_parameter("obstacles.obstacle_filter_time", rclcpp::ParameterValue(
+        obstacle_filter_time));
 
     // 20x20 cells with origin at (0, 0)
     layers_.resizeMap(20, 20, resolution, 0, 0);
@@ -131,6 +135,13 @@ public:
   : ObstacleLayerTest(0.05) {}
 };
 
+class ObstacleLayerFilteredTest : public ObstacleLayerTest
+{
+public:
+  ObstacleLayerFilteredTest()
+  : ObstacleLayerTest(0.1, 0.05) {}
+};
+
 /**
  * Test that a point within cell_max_range is marked as obstacle
  */
@@ -147,6 +158,59 @@ TEST_F(ObstacleLayerTest, testPointWithinCellMaxRange)
   unsigned char cost = obstacle_layer_->getCost(mx, my);
 
   ASSERT_EQ(cost, nav2_costmap_2d::LETHAL_OBSTACLE);
+}
+
+TEST_F(ObstacleLayerFilteredTest, testPointMustBeVisibleForFilterTime)
+{
+  addObservation(obstacle_layer_, 0.55, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, false);
+  update();
+
+  unsigned int mx, my;
+  obstacle_layer_->worldToMap(0.55, 0.0, mx, my);
+  ASSERT_NE(obstacle_layer_->getCost(mx, my), nav2_costmap_2d::LETHAL_OBSTACLE);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(60));
+  update();
+
+  ASSERT_EQ(obstacle_layer_->getCost(mx, my), nav2_costmap_2d::LETHAL_OBSTACLE);
+}
+
+TEST_F(ObstacleLayerFilteredTest, testMovingPointDoesNotUsePreviousFilterTime)
+{
+  addObservation(obstacle_layer_, 0.55, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, false);
+  update();
+  std::this_thread::sleep_for(std::chrono::milliseconds(60));
+
+  obstacle_layer_->clearStaticObservations(true, false);
+  addObservation(obstacle_layer_, 0.85, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, false);
+  update();
+
+  unsigned int mx, my;
+  obstacle_layer_->worldToMap(0.85, 0.0, mx, my);
+  ASSERT_NE(obstacle_layer_->getCost(mx, my), nav2_costmap_2d::LETHAL_OBSTACLE);
+}
+
+TEST_F(ObstacleLayerFilteredTest, testPointSurvivesMissedUpdateWithinFilterTime)
+{
+  addObservation(obstacle_layer_, 0.55, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, false);
+  update();
+
+  obstacle_layer_->clearStaticObservations(true, false);
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  update();
+
+  addObservation(obstacle_layer_, 0.55, 0.0, MAX_Z / 2, 0.0, 0.0, MAX_Z / 2,
+    true, false);
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  update();
+
+  unsigned int mx, my;
+  obstacle_layer_->worldToMap(0.55, 0.0, mx, my);
+  ASSERT_EQ(obstacle_layer_->getCost(mx, my), nav2_costmap_2d::LETHAL_OBSTACLE);
 }
 
 /**

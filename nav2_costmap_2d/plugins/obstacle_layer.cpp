@@ -39,6 +39,7 @@
 #include "nav2_costmap_2d/obstacle_layer.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -93,6 +94,8 @@ void ObstacleLayer::onInitialize()
     name_ + "." + "min_obstacle_height", 0.0);
   max_obstacle_height_ = node->declare_or_get_parameter(
     name_ + "." + "max_obstacle_height", 2.0);
+  obstacle_filter_time_ = node->declare_or_get_parameter(
+    name_ + "." + "obstacle_filter_time", 0.0);
   int combination_method_param = node->declare_or_get_parameter(
     name_ + "." + "combination_method", 1);
   topics_string = node->declare_or_get_parameter(
@@ -346,10 +349,19 @@ void ObstacleLayer::onInitialize()
 }
 
 rcl_interfaces::msg::SetParametersResult ObstacleLayer::validateParameterUpdatesCallback(
-  const std::vector<rclcpp::Parameter> & /*parameters*/)
+  const std::vector<rclcpp::Parameter> & parameters)
 {
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
+  for (const auto & parameter : parameters) {
+    if (parameter.get_name() == name_ + "." + "obstacle_filter_time" &&
+      parameter.get_type() == ParameterType::PARAMETER_DOUBLE && parameter.as_double() < 0.0)
+    {
+      result.successful = false;
+      result.reason = "obstacle_filter_time must be greater than or equal to 0.0";
+      return result;
+    }
+  }
   return result;
 }
 
@@ -376,6 +388,12 @@ ObstacleLayer::updateParametersCallback(
         max_obstacle_height_ != parameter.as_double())
       {
         max_obstacle_height_ = parameter.as_double();
+        setCurrent(false);
+      } else if (param_name == name_ + "." + "obstacle_filter_time" &&
+        obstacle_filter_time_ != parameter.as_double())
+      {
+        obstacle_filter_time_ = parameter.as_double();
+        resetObstacleFilter();
         setCurrent(false);
       }
     } else if (param_type == ParameterType::PARAMETER_BOOL) {
@@ -512,11 +530,23 @@ ObstacleLayer::updateBounds(
     raytraceFreespace(*clearing_observation, min_x, min_y, max_x, max_y);
   }
 
+  const bool obstacle_filter_enabled = obstacle_filter_time_ > 0.0;
+  const double current_time = obstacle_filter_enabled ? clock_->now().seconds() : 0.0;
+  if (obstacle_filter_enabled) {
+    for (auto & candidate : obstacle_candidates_) {
+      candidate.second.seen_this_update = false;
+    }
+  }
+
   // place the new obstacles into a priority queue... each with a priority of zero to begin with
   for (const auto & observation : observations) {
     const Observation & obs = *observation;
 
     const sensor_msgs::msg::PointCloud2 & cloud = obs.cloud_;
+
+    const rclcpp::Time cloud_stamp(cloud.header.stamp);
+    const double observed_time =
+      cloud_stamp.nanoseconds() == 0 ? current_time : cloud_stamp.seconds();
 
     const unsigned int max_range_cells = cellDistance(obs.obstacle_max_range_);
     const unsigned int min_range_cells = cellDistance(obs.obstacle_min_range_);
@@ -586,9 +616,18 @@ ObstacleLayer::updateBounds(
       }
 
       unsigned int index = getIndex(mx, my);
+      if (obstacle_filter_enabled && !isObstacleConfirmed(index, observed_time)) {
+        continue;
+      }
       costmap_[index] = LETHAL_OBSTACLE;
       touch(px, py, min_x, min_y, max_x, max_y);
     }
+  }
+
+  if (obstacle_filter_enabled) {
+    pruneExpiredObstacleCandidates(current_time);
+  } else if (!obstacle_candidates_.empty()) {
+    resetObstacleFilter();
   }
 
   updateFootprint(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);
@@ -867,6 +906,7 @@ void
 ObstacleLayer::reset()
 {
   resetMaps();
+  resetObstacleFilter();
   resetBuffersLastUpdated();
   setCurrent(false);
   was_reset_ = true;
@@ -878,6 +918,44 @@ ObstacleLayer::resetBuffersLastUpdated()
   for (const auto & observation_buffer : observation_buffers_) {
     if (observation_buffer) {
       observation_buffer->resetLastUpdated();
+    }
+  }
+}
+
+void
+ObstacleLayer::resetObstacleFilter()
+{
+  obstacle_candidates_.clear();
+}
+
+bool
+ObstacleLayer::isObstacleConfirmed(unsigned int index, double observed_time)
+{
+  auto & candidate = obstacle_candidates_[index];
+  if (!candidate.seen_this_update) {
+    if (!candidate.initialized) {
+      candidate.first_seen = observed_time;
+      candidate.last_seen = observed_time;
+      candidate.initialized = true;
+    }
+    candidate.seen_this_update = true;
+  }
+  candidate.first_seen = std::min(candidate.first_seen, observed_time);
+  candidate.last_seen = std::max(candidate.last_seen, observed_time);
+
+  return candidate.last_seen - candidate.first_seen >= obstacle_filter_time_;
+}
+
+void
+ObstacleLayer::pruneExpiredObstacleCandidates(double current_time)
+{
+  for (auto it = obstacle_candidates_.begin(); it != obstacle_candidates_.end(); ) {
+    if (!it->second.seen_this_update &&
+      current_time - it->second.last_seen > obstacle_filter_time_)
+    {
+      it = obstacle_candidates_.erase(it);
+    } else {
+      ++it;
     }
   }
 }
