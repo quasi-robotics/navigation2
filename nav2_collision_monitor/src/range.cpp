@@ -110,7 +110,7 @@ bool Range::getData(
     tf2::Vector3 p_v3_b = tf_transform * p_v3_s;
 
     // Refill data array
-    data.push_back({p_v3_b.x(), p_v3_b.y()});
+    data.push_back({p_v3_b.x(), p_v3_b.y(), p_v3_b.z(), source_name_});
   }
 
   // Make sure that last (field_of_view / 2) point will be in the data array
@@ -124,7 +124,7 @@ bool Range::getData(
   tf2::Vector3 p_v3_b = tf_transform * p_v3_s;
 
   // Refill data array
-  data.push_back({p_v3_b.x(), p_v3_b.y()});
+  data.push_back({p_v3_b.x(), p_v3_b.y(), p_v3_b.z(), source_name_});
 
   return true;
 }

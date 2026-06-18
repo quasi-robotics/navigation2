@@ -104,7 +104,7 @@ public:
    * @brief Reset the layer
    */
   void reset() override;
-private:
+protected:
   /**
    * @brief Callback for the filter information
    */
