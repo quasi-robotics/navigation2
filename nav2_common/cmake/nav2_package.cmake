@@ -37,7 +37,7 @@ macro(nav2_package)
   endif()
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wdeprecated -fPIC -Wnull-dereference)
+    add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wdeprecated -fPIC) # -Wnull-dereference) there is a bug in gcc13 in the implementation of this option that causes it to trigger on perfectly valid code, so we are disabling it for now
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-Wnon-virtual-dtor>")
   endif()
 
