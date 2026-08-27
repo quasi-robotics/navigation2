@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.20)
 project(nav2_ros_common)
 
 find_package(ament_cmake REQUIRED)
@@ -15,6 +15,7 @@ find_package(rcl_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -32,13 +33,14 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} INTERFACE
-  ${geometry_msgs_TARGETS}
-  ${nav2_msgs_TARGETS}
-  ${nav_msgs_TARGETS}
-  ${map_msgs_TARGETS}
+  geometry_msgs::geometry_msgs
+  nav2_msgs::nav2_msgs
+  nav_msgs::nav_msgs
+  map_msgs::map_msgs
   pluginlib::pluginlib
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
+  sensor_msgs::sensor_msgs
   tf2_ros::tf2_ros
   rclcpp_action::rclcpp_action
   tf2_geometry_msgs::tf2_geometry_msgs
@@ -80,6 +82,7 @@ ament_export_dependencies(
   rclcpp
   rclcpp_action
   rclcpp_lifecycle
+  sensor_msgs
   tf2
   tf2_geometry_msgs
   tf2_ros
