@@ -56,6 +56,9 @@ public:
    */
   ~Controller();
 
+  void activate() { trajectory_pub_->on_activate(); }
+  void deactivate() { trajectory_pub_->on_deactivate(); }
+
   /**
    * @brief Compute a velocity command using control law.
    * @param pose Target pose, in robot centric coordinates.

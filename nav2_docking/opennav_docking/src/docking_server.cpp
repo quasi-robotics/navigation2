@@ -83,6 +83,7 @@ DockingServer::on_activate(const rclcpp_lifecycle::State & /*state*/)
   tf2_listener_ = nav2::create_transform_listener(*tf2_buffer_, this, true);
   dock_db_->activate();
   navigator_->activate();
+  controller_->activate();
   vel_publisher_->on_activate();
   docking_action_server_->activate();
   undocking_action_server_->activate();
@@ -103,6 +104,7 @@ DockingServer::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
   docking_action_server_->deactivate();
   undocking_action_server_->deactivate();
   dock_db_->deactivate();
+  controller_->deactivate();
   navigator_->deactivate();
   vel_publisher_->on_deactivate();
   param_handler_->deactivate();
