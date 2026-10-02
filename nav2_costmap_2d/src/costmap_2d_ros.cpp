@@ -416,6 +416,8 @@ Costmap2DROS::getParameters()
     "track_unknown_space", false);
   transform_tolerance_ = declare_or_get_parameter(
     "transform_tolerance", 0.3);
+  transform_staleness_threshold_ = declare_or_get_parameter(
+    "transform_staleness_threshold", 0.0);
   initial_transform_timeout_ = declare_or_get_parameter(
     "initial_transform_timeout", 60.0);
   map_update_frequency_ = declare_or_get_parameter(
@@ -571,17 +573,21 @@ Costmap2DROS::mapUpdateLoop(double frequency)
         }
 
         auto current_time = now();
-        if (((last_publish_ + publish_cycle_ - rclcpp::Duration(10ms)) < current_time) ||  // publish_cycle_ is due
-          (current_time <
-          last_publish_))      // time has moved backwards, probably due to a switch to sim_time // NOLINT
-        {
-          RCLCPP_DEBUG(get_logger(), "Publish costmap %s at %f", name_.c_str(), current_time.seconds());
+        const bool publish_due = last_publish_ + publish_cycle_ - rclcpp::Duration(10ms) < current_time ||
+          current_time < last_publish_;  // Time moved backwards, e.g. switching to sim_time.
+        if (publish_due || costmap_publisher_->isRepublishRequested()) {
+          RCLCPP_DEBUG(get_logger(), "Publish costmap at %s", name_.c_str());
           costmap_publisher_->publishCostmap();
+        }
 
-          for (auto & layer_pub : layer_publishers_) {
+        for (auto & layer_pub : layer_publishers_) {
+          if (publish_due || layer_pub->isRepublishRequested()) {
             layer_pub->publishCostmap();
           }
+        }
 
+        // Subscriber requests do not postpone the regular publication schedule.
+        if (publish_due) {
           last_publish_ = current_time;
         }
       }
@@ -751,9 +757,13 @@ Costmap2DROS::resetLayers()
 bool
 Costmap2DROS::getRobotPose(geometry_msgs::msg::PoseStamped & global_pose)
 {
-  return nav2_util::getCurrentPose(
-    global_pose, *tf_buffer_,
-    global_frame_, robot_base_frame_, transform_tolerance_);
+  if (!nav2_util::getFreshPose(
+      *tf_buffer_, global_frame_, robot_base_frame_, now(),
+      transform_staleness_threshold_, global_pose))
+  {
+    return false;
+  }
+  return true;
 }
 
 bool
@@ -867,6 +877,8 @@ Costmap2DROS::updateParametersCallback(const std::vector<rclcpp::Parameter> & pa
         layered_costmap_->setFootprint(*padded);
       } else if (param_name == "transform_tolerance") {
         transform_tolerance_ = parameter.as_double();
+      } else if (param_name == "transform_staleness_threshold") {
+        transform_staleness_threshold_ = parameter.as_double();
       } else if (param_name == "publish_frequency") {
         map_publish_frequency_ = parameter.as_double();
         publish_cycle_ = rclcpp::Duration::from_seconds(1 / map_publish_frequency_);
