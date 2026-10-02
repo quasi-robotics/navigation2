@@ -126,7 +126,8 @@ def generate_launch_description() -> LaunchDescription:
                 name='lifecycle_manager_nav2',
                 namespace=namespace,
                 output='screen',
-                arguments=['--ros-args', '--log-level', log_level],
+                arguments=['--ros-args', '--log-level', log_level,
+                           '--ros-args', '--disable-rosout-logs', '--disable-external-lib-logs'],
                 parameters=manager_parameters,
             ),
         ]
