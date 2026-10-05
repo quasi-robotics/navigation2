@@ -388,7 +388,7 @@ protected:
    * @brief Function on timer for costmap update
    */
   void mapUpdateLoop(double frequency);
-  bool map_update_thread_shutdown_{false};
+  std::atomic<bool> map_update_thread_shutdown_{false};  // [AI generated]
   std::atomic<bool> stop_updates_{false};
   std::atomic<bool> initialized_{false};
   std::atomic<bool> stopped_{true};
@@ -424,6 +424,7 @@ protected:
   bool rolling_window_{false};          ///< Whether to use a rolling window version of the costmap
   bool track_unknown_space_{false};
   double transform_tolerance_{0};           ///< The timeout before transform errors
+  double transform_staleness_threshold_{0};  ///< Maximum robot pose TF age; 0 disables the check
   double initial_transform_timeout_{0};   ///< The timeout before activation of the node errors
   double map_vis_z_{0};                 ///< The height of map, allows to avoid flickering at -0.008
   /// If true, the footprint subscriber expects a PolygonStamped msg

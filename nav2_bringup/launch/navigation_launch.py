@@ -24,6 +24,22 @@ from launch_ros.descriptions import ComposableNode, ParameterFile
 from nav2_common.launch import LaunchConfigAsBool, RewrittenYaml
 
 
+def get_lifecycle_nodes(context):
+    return (
+        'controller_server',
+        'smoother_server',
+        'planner_server',
+        'route_server',
+        'behavior_server',
+        'velocity_smoother',
+        'collision_monitor',
+        'bt_navigator',
+        #'waypoint_follower',
+        'docking_server',
+        'following_server',
+    )
+
+
 def generate_launch_description() -> LaunchDescription:
     # Get the launch directory
     bringup_dir = get_package_share_directory('nav2_bringup')
@@ -41,20 +57,6 @@ def generate_launch_description() -> LaunchDescription:
     log_level = LaunchConfiguration('log_level')
     use_keepout_zones = LaunchConfigAsBool('use_keepout_zones')
     use_speed_zones = LaunchConfigAsBool('use_speed_zones')
-
-    lifecycle_nodes = [
-        'controller_server',
-        'smoother_server',
-        'planner_server',
-        'route_server',
-        'behavior_server',
-        'velocity_smoother',
-        'collision_monitor',
-        'bt_navigator',
-        #'waypoint_follower',
-        'docking_server',
-        'following_server',
-    ]
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
@@ -308,18 +310,6 @@ def generate_launch_description() -> LaunchDescription:
                 remappings=remappings +
                   [('cmd_vel', 'cmd_vel_collmon')]
             ),
-            Node(
-                package='nav2_lifecycle_manager',
-                executable='lifecycle_manager',
-                name='lifecycle_manager_navigation',
-                output='screen',
-                arguments=['--ros-args', '--log-level', log_level,
-                           '--ros-args', '--disable-rosout-logs', '--disable-external-lib-logs'],
-                parameters=[
-                    configured_params,
-                    {'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}
-                ],
-            ),
         ],
     )
 
@@ -418,16 +408,6 @@ def generate_launch_description() -> LaunchDescription:
                         name='following_server',
                         parameters=[configured_params],
                         remappings=remappings,
-                        extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
-                    ),
-                    ComposableNode(
-                        package='nav2_lifecycle_manager',
-                        plugin='nav2_lifecycle_manager::LifecycleManager',
-                        name='lifecycle_manager_navigation',
-                        parameters=[
-                            configured_params,
-                            {'autostart': autostart, 'node_names': lifecycle_nodes, 'bond_timeout': 10.0}
-                        ],
                         extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}],
                     ),
                 ],
