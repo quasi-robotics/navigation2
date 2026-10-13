@@ -161,8 +161,8 @@ bool transformPoseInTargetFrame(
       logger,
       "Connectivity Error looking up target frame: %s\n", ex.what());
   } catch (tf2::ExtrapolationException & ex) {
-    RCLCPP_ERROR(
-      logger,
+    RCLCPP_ERROR_THROTTLE(
+      logger, clock, 10000,
       "Extrapolation Error looking up target frame: %s\n", ex.what());
   } catch (tf2::TimeoutException & ex) {
     RCLCPP_ERROR(
