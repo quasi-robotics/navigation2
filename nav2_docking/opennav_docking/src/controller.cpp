@@ -21,6 +21,9 @@
 #include "nav2_ros_common/node_utils.hpp"
 #include "tf2/utils.hpp"
 #include "nav2_ros_common/tf2_factories.hpp"
+#include "nav2_costmap_2d/cost_values.hpp"
+#include "nav2_costmap_2d/exceptions.hpp"
+#include "nav2_util/line_iterator.hpp"
 
 using rcl_interfaces::msg::ParameterType;
 
@@ -63,6 +66,8 @@ Controller::Controller(
     "controller.simulation_time_step", 0.1);
   dock_collision_threshold_ = node->declare_or_get_parameter(
     "controller.dock_collision_threshold", 0.3);
+  start_collision_exemption_ = node->declare_or_get_parameter(
+    "controller.start_collision_exemption", 0.0);
 
   control_law_ = std::make_unique<nav2_graceful_controller::SmoothControlLaw>(
     k_phi_, k_delta_, beta_, lambda_, slowdown_radius_, deceleration_max_,
@@ -129,6 +134,59 @@ geometry_msgs::msg::Twist Controller::computeRotateToHeadingCommand(
   return cmd_vel;
 }
 
+bool Controller::isContactAhead(const geometry_msgs::msg::Pose & start, const double direction)
+{
+  if (start_collision_exemption_ <= 0.0) {
+    return true;  // Nothing to exempt
+  }
+
+  std::vector<geometry_msgs::msg::Point> footprint;
+  std_msgs::msg::Header header;
+  std::shared_ptr<nav2_costmap_2d::Costmap2D> costmap;
+  try {
+    costmap = costmap_sub_->getCostmap();
+  } catch (const std::exception &) {
+    return true;
+  }
+  if (!footprint_sub_->getFootprintInRobotFrame(footprint, header) || footprint.empty()) {
+    return true;
+  }
+
+  // Sweep the footprint outline, as the collision checker sees it, over the exempted
+  // distance: any lethal cell it meets ahead of the robot's origin counts as ahead
+  const double yaw = tf2::getYaw(start.orientation);
+  const double step = costmap->getResolution() / 2.0;
+  for (double s = 0.0; s <= start_collision_exemption_ + step; s += step) {
+    const double px = start.position.x + direction * s * cos(yaw);
+    const double py = start.position.y + direction * s * sin(yaw);
+    for (size_t i = 0; i < footprint.size(); ++i) {
+      const auto & a = footprint[i];
+      const auto & b = footprint[(i + 1) % footprint.size()];
+      unsigned int x0, y0, x1, y1;
+      if (!costmap->worldToMap(
+          px + cos(yaw) * a.x - sin(yaw) * a.y, py + sin(yaw) * a.x + cos(yaw) * a.y, x0, y0) ||
+        !costmap->worldToMap(
+          px + cos(yaw) * b.x - sin(yaw) * b.y, py + sin(yaw) * b.x + cos(yaw) * b.y, x1, y1))
+      {
+        return true;
+      }
+      for (nav2_util::LineIterator line(x0, y0, x1, y1); line.isValid(); line.advance()) {
+        if (costmap->getCost(line.getX(), line.getY()) != nav2_costmap_2d::LETHAL_OBSTACLE) {
+          continue;
+        }
+        double wx, wy;
+        costmap->mapToWorld(line.getX(), line.getY(), wx, wy);
+        const double ahead =
+          cos(yaw) * (wx - start.position.x) + sin(yaw) * (wy - start.position.y);
+        if (ahead * direction > 0.0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 bool Controller::isTrajectoryCollisionFree(
   const geometry_msgs::msg::Pose & target_pose, bool is_docking, bool backward)
 {
@@ -155,10 +213,22 @@ bool Controller::isTrajectoryCollisionFree(
     return false;
   }
 
+  // Obstacles already touching the robot don't block it from moving away from them
+  double exemption = 0.0;
+  if (use_collision_detection_) {
+    geometry_msgs::msg::PoseStamped start;
+    start.header.frame_id = base_frame_;
+    start.pose.orientation.w = 1.0;
+    tf2::doTransform(start, start, base_to_fixed_transform);
+    exemption = isContactAhead(start.pose, backward ? -1.0 : 1.0) ?
+      0.0 : start_collision_exemption_;
+  }
+
   // Generate path
   double distance = std::numeric_limits<double>::max();
   unsigned int max_iter = static_cast<unsigned int>(ceil(projection_time_ / simulation_time_step_));
 
+  bool fetch_costmap = true;
   do{
     // Apply velocities to calculate next pose
     next_pose.pose = control_law_->calculateNextPose(
@@ -180,22 +250,37 @@ bool Controller::isTrajectoryCollisionFree(
       nav2_util::geometry_utils::euclidean_distance(target_pose, next_pose.pose) :
       std::hypot(next_pose.pose.position.x, next_pose.pose.position.y);
 
-    // If this distance is greater than the dock_collision_threshold, check for collisions
-    if (use_collision_detection_ &&
-      dock_collision_distance > dock_collision_threshold_ &&
-      !collision_checker_->isCollisionFree(local_pose.pose))
-    {
-      RCLCPP_WARN(
-        logger_, "Collision detected at pose: (%.2f, %.2f, %.2f) in frame %s",
-        local_pose.pose.position.x, local_pose.pose.position.y, local_pose.pose.position.z,
-        local_pose.header.frame_id.c_str());
-      trajectory_pub_->publish(std::move(trajectory));
+    try {
+      // If this distance is greater than the dock_collision_threshold, check for collisions,
+      // except where the robot already is
+      if (use_collision_detection_ &&
+        dock_collision_distance > dock_collision_threshold_ &&
+        std::hypot(next_pose.pose.position.x, next_pose.pose.position.y) > exemption)
+      {
+        if(auto score = collision_checker_->scorePose(local_pose.pose, fetch_costmap); score == nav2_costmap_2d::LETHAL_OBSTACLE) {
+          RCLCPP_WARN(
+            logger_, "Collision (score: %d) detected at distance %.2f and pose: (%.2f, %.2f, %.2f) in frame %s",
+            (int)score, dock_collision_distance, local_pose.pose.position.x, local_pose.pose.position.y, local_pose.pose.position.z,
+            local_pose.header.frame_id.c_str());
+          trajectory_pub_->publish(std::move(trajectory));
+          return false;
+        }
+        fetch_costmap = false;
+      }
+    } catch (const nav2_costmap_2d::IllegalPoseException & e) {
+      RCLCPP_ERROR(logger_, "%s", e.what());
+      return false;
+    } catch (const nav2_costmap_2d::CollisionCheckerException & e) {
+      RCLCPP_ERROR(logger_, "%s", e.what());
+      return false;
+    } catch (...) {
+      RCLCPP_ERROR(logger_, "Failed to check pose score!");
       return false;
     }
 
     // Check if we reach the goal
     distance = nav2_util::geometry_utils::euclidean_distance(target_pose, next_pose.pose);
-  }while(distance > 1e-2 && trajectory->poses.size() < max_iter);
+  } while(distance > 1e-2 && trajectory->poses.size() < max_iter);
 
   trajectory_pub_->publish(std::move(trajectory));
 
@@ -277,6 +362,8 @@ Controller::updateParametersCallback(const std::vector<rclcpp::Parameter> & para
         simulation_time_step_ = parameter.as_double();
       } else if (param_name == "controller.dock_collision_threshold") {
         dock_collision_threshold_ = parameter.as_double();
+      } else if (param_name == "controller.start_collision_exemption") {
+        start_collision_exemption_ = parameter.as_double();
       }
 
       // Update the smooth control law with the new params

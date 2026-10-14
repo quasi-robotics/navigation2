@@ -259,7 +259,8 @@ void DockingServer::dockRobot()
 
     // If we performed a rotation before docking backward, we must rotate the staging pose
     // to match the robot orientation
-    auto staging_pose = dock->getStagingPose();
+    auto staging_pose = dock->plugin->shouldUseRobotPoseForRetries() ?
+      getRobotPoseInFrame(params_->fixed_frame) : dock->getStagingPose();
     if (dock->plugin->shouldRotateToDock()) {
       staging_pose.pose.orientation = nav2_util::geometry_utils::orientationAroundZAxis(
         tf2::getYaw(staging_pose.pose.orientation) + M_PI);
@@ -428,6 +429,22 @@ void DockingServer::doInitialPerception(Dock * dock, geometry_msgs::msg::PoseSta
 
     loop_rate.sleep();
   }
+
+  // Keep refining while stationary so the plugin's pose filter averages several detections,
+  // rather than starting the approach from a single (possibly poor, far-range) detection
+  const auto averaging_start = this->now();
+  const auto averaging_time =
+    rclcpp::Duration::from_seconds(params_->initial_perception_averaging_time);
+  while (this->now() - averaging_start < averaging_time) {
+    if (checkAndWarnIfCancelled<DockRobot>(docking_action_server_, "dock_robot") ||
+      checkAndWarnIfPreempted<DockRobot>(docking_action_server_, "dock_robot"))
+    {
+      return;
+    }
+
+    loop_rate.sleep();
+    dock->plugin->getRefinedPose(dock_pose, dock->id);
+  }
 }
 
 void DockingServer::rotateToDock(const geometry_msgs::msg::PoseStamped & dock_pose)
@@ -502,7 +519,7 @@ bool DockingServer::approachDock(
     // Thus, we backward project the controller's target pose a little bit after the
     // dock so that the robot never gets to the end of the spiral before its in contact
     // with the dock to stop the docking procedure.
-    const double backward_projection = 0.25;
+    const double backward_projection = 0.8;
     const double yaw = tf2::getYaw(target_pose.pose.orientation);
     target_pose.pose.position.x += cos(yaw) * backward_projection;
     target_pose.pose.position.y += sin(yaw) * backward_projection;
@@ -518,6 +535,7 @@ bool DockingServer::approachDock(
     // Compute and publish controls
     auto command = std::make_unique<geometry_msgs::msg::TwistStamped>();
     command->header.stamp = now();
+    command->header.frame_id = params_->base_frame;
     if (!controller_->computeVelocityCommand(target_pose.pose, command->twist, true, backward)) {
       throw opennav_docking_core::FailedToControl("Failed to get control");
     }
@@ -584,6 +602,7 @@ bool DockingServer::resetApproach(
     // Compute and publish command
     auto command = std::make_unique<geometry_msgs::msg::TwistStamped>();
     command->header.stamp = now();
+    command->header.frame_id = params_->base_frame;
     if (getCommandToPose(
         command->twist, staging_pose, params_->undock_linear_tolerance,
         params_->undock_angular_tolerance, false,
@@ -730,6 +749,7 @@ void DockingServer::undockRobot()
       // Get command to approach staging pose
       auto command = std::make_unique<geometry_msgs::msg::TwistStamped>();
       command->header.stamp = now();
+      command->header.frame_id = params_->base_frame;
 
       if (getCommandToPose(
           command->twist, staging_pose, params_->undock_linear_tolerance,
@@ -799,6 +819,7 @@ void DockingServer::publishZeroVelocity()
 {
   auto cmd_vel = std::make_unique<geometry_msgs::msg::TwistStamped>();
   cmd_vel->header.stamp = now();
+  cmd_vel->header.frame_id = params_->base_frame;
   vel_publisher_->publish(std::move(cmd_vel));
 }
 

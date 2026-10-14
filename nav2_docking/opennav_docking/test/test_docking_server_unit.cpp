@@ -45,6 +45,17 @@ public:
   {
     return params_->dock_backwards;
   }
+
+  Dock * findDock(const std::string & id)
+  {
+    return dock_db_->findDock(id);
+  }
+
+  // As dockRobot() does, so feedback can be published outside an action
+  void startActionClock()
+  {
+    action_start_time_ = now();
+  }
 };
 
 // Test shim to expose the TF2 buffer for injection
@@ -292,6 +303,7 @@ TEST(DockingServerTests, testDynamicParams)
   auto results = rec_param->set_parameters_atomically(
     {rclcpp::Parameter("controller_frequency", 0.2),
       rclcpp::Parameter("initial_perception_timeout", 1.0),
+      rclcpp::Parameter("initial_perception_averaging_time", 0.7),
       rclcpp::Parameter("wait_charge_timeout", 1.2),
       rclcpp::Parameter("undock_linear_tolerance", 0.25),
       rclcpp::Parameter("undock_angular_tolerance", 0.125),
@@ -303,6 +315,7 @@ TEST(DockingServerTests, testDynamicParams)
   rclcpp::spin_until_future_complete(node->get_node_base_interface(), results);
 
   EXPECT_EQ(node->get_parameter("initial_perception_timeout").as_double(), 1.0);
+  EXPECT_EQ(node->get_parameter("initial_perception_averaging_time").as_double(), 0.7);
   EXPECT_EQ(node->get_parameter("wait_charge_timeout").as_double(), 1.2);
   EXPECT_EQ(node->get_parameter("undock_linear_tolerance").as_double(), 0.25);
   EXPECT_EQ(node->get_parameter("undock_angular_tolerance").as_double(), 0.125);
@@ -370,6 +383,42 @@ TEST(DockingServerTests, testDockBackward)
 
   node->on_shutdown(rclcpp_lifecycle::State());
   node.reset();
+}
+
+TEST(DockingServerTests, InitialPerceptionAveraging)
+{
+  auto node = std::make_shared<DockingServerShim>();
+  node->declare_parameter("docks", std::vector<std::string>{"test_dock"});
+  node->declare_parameter("test_dock.type", "test_plugin");
+  node->declare_parameter("test_dock.pose", std::vector<double>{0.0, 0.0, 0.0});
+  node->declare_parameter("dock_plugins", std::vector<std::string>{"test_plugin"});
+  node->declare_parameter("test_plugin.plugin", "opennav_docking::TestFailureDock");
+  node->declare_parameter("refine_succeeds", true);
+  node->declare_parameter("controller_frequency", 20.0);
+  node->on_configure(rclcpp_lifecycle::State());
+  node->on_activate(rclcpp_lifecycle::State());
+  Dock * dock = node->findDock("test_dock");
+  ASSERT_NE(dock, nullptr);
+  node->startActionClock();
+
+  // Disabled by default: the approach starts from the first detection
+  geometry_msgs::msg::PoseStamped pose;
+  node->doInitialPerception(dock, pose);
+  EXPECT_EQ(pose.pose.position.x, 1.0);
+
+  // Enabled: stays put and keeps refining for the averaging time
+  node->set_parameter(rclcpp::Parameter("initial_perception_averaging_time", 0.5));
+  pose = geometry_msgs::msg::PoseStamped();
+  auto start = std::chrono::steady_clock::now();
+  node->doInitialPerception(dock, pose);
+  auto elapsed = std::chrono::steady_clock::now() - start;
+  EXPECT_GE(elapsed, 500ms);
+  EXPECT_LT(elapsed, 1500ms);
+  EXPECT_GE(pose.pose.position.x, 6.0);  // ~10 refinements at 20 Hz, allow for scheduling
+
+  node->on_deactivate(rclcpp_lifecycle::State());
+  node->on_cleanup(rclcpp_lifecycle::State());
+  node->on_shutdown(rclcpp_lifecycle::State());
 }
 
 TEST(DockingServerTests, ExceptionHandlingDuringDocking)

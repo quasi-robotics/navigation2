@@ -119,6 +119,12 @@ public:
 protected:
   void jointStateCallback(const sensor_msgs::msg::JointState::ConstSharedPtr & state);
 
+  // Subscribe to the battery state, used to determine if charging
+  virtual void createBatterySubscription();
+
+  // Subscribe to the external dock detections
+  virtual void createDetectionSubscription();
+
   // Optionally subscribe to a detected dock pose topic
   nav2::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr dock_pose_sub_;
   nav2::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr dock_pose_pub_;

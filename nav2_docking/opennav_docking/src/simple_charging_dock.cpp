@@ -106,13 +106,7 @@ void SimpleChargingDock::configure(
   // Create persistent subscription if toggling is disabled.
   if (use_external_detection_pose_ && !subscribe_toggle_) {
     dock_pose_.header.stamp = rclcpp::Time(0);
-    dock_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
-      "detected_dock_pose",
-      [this](const geometry_msgs::msg::PoseStamped::ConstSharedPtr & pose) {
-        detected_dock_pose_ = *pose;
-        initial_pose_received_ = true;
-      },
-      nav2::qos::StandardTopicQoS());
+    createDetectionSubscription();
   }
 
   dock_direction_ = utils::getDockDirectionFromString(dock_direction);
@@ -135,11 +129,7 @@ void SimpleChargingDock::configure(
   }
 
   if (use_battery_status_) {
-    battery_sub_ = node_->create_subscription<sensor_msgs::msg::BatteryState>(
-      "battery_state",
-      [this](const sensor_msgs::msg::BatteryState::ConstSharedPtr & state) {
-        is_charging_ = state->current > charging_threshold_;
-      });
+    createBatterySubscription();
   }
 
   if (use_stall_detection) {
@@ -319,6 +309,26 @@ bool SimpleChargingDock::hasStoppedCharging()
   return !isCharging();
 }
 
+void SimpleChargingDock::createBatterySubscription()
+{
+  battery_sub_ = node_->create_subscription<sensor_msgs::msg::BatteryState>(
+    "battery_state",
+    [this](const sensor_msgs::msg::BatteryState::ConstSharedPtr & state) {
+      is_charging_ = state->current > charging_threshold_;
+    });
+}
+
+void SimpleChargingDock::createDetectionSubscription()
+{
+  dock_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "detected_dock_pose",
+    [this](const geometry_msgs::msg::PoseStamped::ConstSharedPtr & pose) {
+      detected_dock_pose_ = *pose;
+      initial_pose_received_ = true;
+    },
+    nav2::qos::StandardTopicQoS());
+}
+
 void SimpleChargingDock::jointStateCallback(
   const sensor_msgs::msg::JointState::ConstSharedPtr & state)
 {
@@ -374,13 +384,7 @@ bool SimpleChargingDock::startDetectionProcess()
   // 2. Subscription toggle
   //    Only subscribe once; will set state to ON on first message
   if (subscribe_toggle_ && !dock_pose_sub_) {
-    dock_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
-      "detected_dock_pose",
-      [this](const geometry_msgs::msg::PoseStamped::ConstSharedPtr & pose) {
-        detected_dock_pose_ = *pose;
-        initial_pose_received_ = true;
-      },
-      nav2::qos::StandardTopicQoS());
+    createDetectionSubscription();
   }
 
   detection_active_ = true;

@@ -35,6 +35,9 @@ struct Parameters
   double controller_frequency;
   // Timeout for initially detecting the charge dock
   double initial_perception_timeout;
+  // Time to keep refining the dock pose after the first detection, before moving,
+  // so the dock plugin's pose filter averages several detections (0 disables)
+  double initial_perception_averaging_time;
   // Timeout after making contact with dock for charging to start
   // If this is exceeded, the robot returns to the staging pose and retries
   double wait_charge_timeout;

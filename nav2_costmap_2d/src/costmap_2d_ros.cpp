@@ -306,7 +306,9 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
   map_update_thread_ = std::make_unique<std::thread>(
     std::bind(&Costmap2DROS::mapUpdateLoop, this, map_update_frequency_));
 
+  RCLCPP_INFO(get_logger(), "Before start");
   start();
+  RCLCPP_INFO(get_logger(), "After start");
 
   // Add callback for dynamic parameters
   post_set_params_handler_ = this->add_post_set_parameters_callback(
@@ -678,6 +680,7 @@ Costmap2DROS::start()
     {
       (*plugin)->activate();
     }
+    RCLCPP_INFO(get_logger(), "started plugins, now starting filters");
     for (std::vector<std::shared_ptr<Layer>>::iterator filter = filters->begin();
       filter != filters->end();
       ++filter)
@@ -688,12 +691,14 @@ Costmap2DROS::start()
   }
   stop_updates_ = false;
 
-  // block until the costmap is re-initialized.. meaning one update cycle has run
-  rclcpp::Rate r(20.0);
-  while (rclcpp::ok() && !initialized_) {
-    RCLCPP_DEBUG(get_logger(), "Sleeping, waiting for initialized_");
-    r.sleep();
-  }
+  RCLCPP_INFO(get_logger(), "started all plugins and filters");
+
+  // // block until the costmap is re-initialized.. meaning one update cycle has run
+  // rclcpp::Rate r(20.0);
+  // while (rclcpp::ok() && !initialized_) {
+  //   RCLCPP_DEBUG(get_logger(), "Sleeping, waiting for initialized_");
+  //   r.sleep();
+  // }
 }
 
 void

@@ -42,6 +42,14 @@ void DockRobotAction::on_tick()
   getInput("navigate_to_staging_pose", goal_.navigate_to_staging_pose);
 }
 
+void DockRobotAction::on_wait_for_result(std::shared_ptr<const typename Action::Feedback> feedback) {
+  if(state_ != feedback->state) {
+    state_ = feedback->state;
+    RCLCPP_DEBUG(node_->get_logger(), "DockRobotAction feedback: state=%u, docking_time=%.2f, num_retries=%u",
+      feedback->state, feedback->docking_time.seconds(), feedback->num_retries);
+  }
+}
+
 BT::NodeStatus DockRobotAction::on_success()
 {
   setOutput("success", result_.result->success);

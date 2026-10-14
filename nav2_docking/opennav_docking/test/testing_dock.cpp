@@ -75,10 +75,16 @@ public:
     return geometry_msgs::msg::PoseStamped();
   }
 
-  virtual bool getRefinedPose(geometry_msgs::msg::PoseStamped &, std::string)
+  virtual bool getRefinedPose(geometry_msgs::msg::PoseStamped & pose, std::string)
   {
-    // Always return false to trigger a timeout, when no exceptions are thrown
-    return false;
+    // Return false to trigger a timeout, unless a test opts into successful refinement,
+    // in which case each refinement advances x by 1 so the test can count them
+    bool refine_succeeds;
+    node_->get_parameter_or("refine_succeeds", refine_succeeds, false);
+    if (refine_succeeds) {
+      pose.pose.position.x += 1.0;
+    }
+    return refine_succeeds;
   }
 
   virtual bool isDocked()

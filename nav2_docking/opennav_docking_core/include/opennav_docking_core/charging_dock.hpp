@@ -153,6 +153,13 @@ public:
    */
   bool shouldRotateToDock() {return rotate_to_dock_;}
 
+  /**
+   * @brief Determines whether docking retries should return to the robot pose (in the
+   * fixed frame) where the first approach began, instead of to the dock's staging pose.
+   * @return bool If the robot pose should be used for retries.
+   */
+  virtual bool shouldUseRobotPoseForRetries() {return false;}
+
   std::string getName() {return name_;}
 
 protected:

@@ -203,6 +203,7 @@ For debugging purposes, there are several publishers which can be used with RVIZ
 |------------------------------|---------------------------------------------------------|--------|-----------|
 | controller_frequency         | Control frequency (Hz) for vision-control loop          | double | 50.0      |
 | initial_perception_timeout   | Timeout (s) to wait to obtain initial perception of the dock | double | 5.0   |
+| initial_perception_averaging_time | Time (s) to keep refining the dock pose after first detection, before moving, so the dock's pose filter averages several detections. 0 disables | double | 0.0 |
 | wait_charge_timeout          | Timeout (s) to wait to see if charging starts after docking  | double | 5.0  |
 | dock_approach_timeout        | Timeout (s) to attempt vision-control approach loop    | double |  30.0      |
 | rotate_to_dock_timeout       | Timeout (s) to attempt rotate-to-dock loop             | double |  10.0      |
@@ -236,6 +237,7 @@ For debugging purposes, there are several publishers which can be used with RVIZ
 | controller.projection_time | Time to look ahead for collisions (s). | double | 5.0     |
 | controller.simulation_time_step | Time step for projections (s). | double | 0.1     |
 | controller.dock_collision_threshold | Distance (m) from the dock pose to ignore collisions. | double | 0.3     |
+| controller.start_collision_exemption | Distance (m) from the robot's current pose within which collisions are ignored, so obstacles already touching the robot don't block it from moving away from them. Never applied to obstacles ahead of the robot in its direction of travel. Keep it about one costmap cell. | double | 0.0 |
 
 Note: `dock_plugins` and either `docks` or `dock_database` are required.
 

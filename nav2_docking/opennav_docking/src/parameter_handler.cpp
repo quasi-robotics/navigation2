@@ -35,6 +35,8 @@ ParameterHandler::ParameterHandler(
   params_.controller_frequency = node->declare_or_get_parameter("controller_frequency", 50.0);
   params_.initial_perception_timeout = node->declare_or_get_parameter("initial_perception_timeout",
     5.0);
+  params_.initial_perception_averaging_time = node->declare_or_get_parameter(
+    "initial_perception_averaging_time", 0.0);
   params_.wait_charge_timeout = node->declare_or_get_parameter("wait_charge_timeout", 5.0);
   params_.dock_approach_timeout = node->declare_or_get_parameter("dock_approach_timeout", 30.0);
   params_.rotate_to_dock_timeout = node->declare_or_get_parameter("rotate_to_dock_timeout", 10.0);
@@ -112,6 +114,8 @@ ParameterHandler::updateParametersCallback(
         params_.controller_frequency = parameter.as_double();
       } else if (param_name == "initial_perception_timeout") {
         params_.initial_perception_timeout = parameter.as_double();
+      } else if (param_name == "initial_perception_averaging_time") {
+        params_.initial_perception_averaging_time = parameter.as_double();
       } else if (param_name == "wait_charge_timeout") {
         params_.wait_charge_timeout = parameter.as_double();
       } else if (param_name == "undock_linear_tolerance") {

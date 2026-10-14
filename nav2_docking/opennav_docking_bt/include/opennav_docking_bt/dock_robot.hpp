@@ -58,6 +58,8 @@ public:
    */
   void on_tick() override;
 
+  void on_wait_for_result(std::shared_ptr<const typename Action::Feedback>/*feedback*/) override;
+
   /**
    * @brief Function to perform some user-defined operation upon successful completion of the action
    */
@@ -104,6 +106,8 @@ public:
           "num_retries", "The number of retries executed"),
       });
   }
+
+  uint16_t state_ {0};
 };
 
 }  // namespace opennav_docking_bt

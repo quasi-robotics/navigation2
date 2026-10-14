@@ -96,6 +96,15 @@ protected:
     const geometry_msgs::msg::Pose & target_pose, bool is_docking, bool backward = false);
 
   /**
+   * @brief Check if a lethal cell met by the robot's footprint within the start collision
+   * exemption distance lies ahead of it.
+   * @param start Robot pose in the fixed frame.
+   * @param direction Direction of travel: 1 forward, -1 backward.
+   * @return True if so, or if it can't be determined.
+   */
+  bool isContactAhead(const geometry_msgs::msg::Pose & start, double direction);
+
+  /**
    * @brief Validate incoming parameter updates before applying them.
    * This callback is triggered when one or more parameters are about to be updated.
    * It checks the validity of parameter values and rejects updates that would lead
@@ -145,6 +154,9 @@ protected:
 
   // Used for collision checking
   bool use_collision_detection_;
+  // Poses closer than this to the robot aren't checked, so obstacles touching it don't block
+  // it from moving away (never applied when they are ahead of it)
+  double start_collision_exemption_;
   double projection_time_;
   double simulation_time_step_;
   double dock_collision_threshold_;
