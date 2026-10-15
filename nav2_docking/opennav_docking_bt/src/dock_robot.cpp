@@ -45,8 +45,8 @@ void DockRobotAction::on_tick()
 void DockRobotAction::on_wait_for_result(std::shared_ptr<const typename Action::Feedback> feedback) {
   if(state_ != feedback->state) {
     state_ = feedback->state;
-    RCLCPP_DEBUG(node_->get_logger(), "DockRobotAction feedback: state=%u, docking_time=%.2f, num_retries=%u",
-      feedback->state, feedback->docking_time.seconds(), feedback->num_retries);
+    RCLCPP_DEBUG(node_->get_logger(), "DockRobotAction feedback: state=%u, docking_time=%i, num_retries=%u",
+      static_cast<int>(feedback->state), feedback->docking_time.sec, feedback->num_retries);
   }
 }
 
