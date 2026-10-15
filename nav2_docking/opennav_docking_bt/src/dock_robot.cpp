@@ -43,15 +43,16 @@ void DockRobotAction::on_tick()
 }
 
 void DockRobotAction::on_wait_for_result(std::shared_ptr<const typename Action::Feedback> feedback) {
-  if(state_ != feedback->state) {
+  if(feedback && state_ != feedback->state) {
     state_ = feedback->state;
-    RCLCPP_DEBUG(node_->get_logger(), "DockRobotAction feedback: state=%u, docking_time=%i, num_retries=%u",
+    RCLCPP_INFO(node_->get_logger(), "DockRobotAction feedback: state=%u, docking_time=%i, num_retries=%u",
       static_cast<int>(feedback->state), feedback->docking_time.sec, feedback->num_retries);
   }
 }
 
 BT::NodeStatus DockRobotAction::on_success()
 {
+  state_ = nav2_msgs::action::DockRobot::Feedback::NONE;
   setOutput("success", result_.result->success);
   setOutput("num_retries", result_.result->num_retries);
   setOutput("error_code_id", ActionResult::NONE);
@@ -61,6 +62,7 @@ BT::NodeStatus DockRobotAction::on_success()
 
 BT::NodeStatus DockRobotAction::on_aborted()
 {
+  state_ = nav2_msgs::action::DockRobot::Feedback::NONE;
   setOutput("success", result_.result->success);
   setOutput("num_retries", result_.result->num_retries);
   setOutput("error_code_id", result_.result->error_code);
@@ -70,6 +72,7 @@ BT::NodeStatus DockRobotAction::on_aborted()
 
 BT::NodeStatus DockRobotAction::on_cancelled()
 {
+  state_ = nav2_msgs::action::DockRobot::Feedback::NONE;
   setOutput("error_code_id", ActionResult::NONE);
   setOutput("error_msg", "");
   return BT::NodeStatus::SUCCESS;

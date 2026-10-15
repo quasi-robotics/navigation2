@@ -107,7 +107,7 @@ public:
       });
   }
 
-  uint16_t state_ {0};
+  uint16_t state_ {nav2_msgs::action::DockRobot::Feedback::NONE};
 };
 
 }  // namespace opennav_docking_bt
