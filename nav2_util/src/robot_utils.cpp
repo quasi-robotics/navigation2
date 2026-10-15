@@ -47,13 +47,16 @@ bool lookupTransformWithStalenessCheck(
     return true;
   }
 
+  static rclcpp::Logger logger = rclcpp::get_logger("lookupTransformWithStalenessCheck");
+  static rclcpp::Clock clock(RCL_STEADY_TIME);
   geometry_msgs::msg::TransformStamped latest_transform;
   try {
     latest_transform = tf_buffer.lookupTransform(
       target_frame, source_frame, tf2::TimePointZero);
   } catch (const tf2::TransformException & ex) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("lookupTransformWithStalenessCheck"),
+    RCLCPP_WARN_THROTTLE(
+      logger,
+      clock, 10000,
       "Failed to get transform: %s", ex.what());
     return false;
   }
@@ -66,7 +69,7 @@ bool lookupTransformWithStalenessCheck(
     const double transform_age = (current_time - transform_time).seconds();
     if (transform_age > staleness_threshold) {
       RCLCPP_ERROR(
-        rclcpp::get_logger("lookupTransformWithStalenessCheck"),
+        logger,
         "Transform from frame '%s' to frame '%s' is stale: age %fs exceeds threshold %fs",
         source_frame.c_str(), target_frame.c_str(), transform_age, staleness_threshold);
       return false;

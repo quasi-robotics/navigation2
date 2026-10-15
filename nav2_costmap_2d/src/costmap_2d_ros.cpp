@@ -306,9 +306,7 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
   map_update_thread_ = std::make_unique<std::thread>(
     std::bind(&Costmap2DROS::mapUpdateLoop, this, map_update_frequency_));
 
-  RCLCPP_INFO(get_logger(), "Before start");
   start();
-  RCLCPP_INFO(get_logger(), "After start");
 
   // Add callback for dynamic parameters
   post_set_params_handler_ = this->add_post_set_parameters_callback(
