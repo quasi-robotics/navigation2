@@ -214,7 +214,7 @@ bool SimpleChargingDock::getRefinedPose(geometry_msgs::msg::PoseStamped & pose, 
     try {
       if (!tf2_buffer_->canTransform(
           pose.header.frame_id, detected.header.frame_id,
-          detected.header.stamp, rclcpp::Duration::from_seconds(0.5)))
+          detected.header.stamp, tf2::durationFromSec(0.5)))
       {
         RCLCPP_WARN(
           node_->get_logger(), "Failed to transform detected dock pose: "
@@ -226,7 +226,7 @@ bool SimpleChargingDock::getRefinedPose(geometry_msgs::msg::PoseStamped & pose, 
         ));
         return false;
       }
-      tf2_buffer_->transform(detected, detected, pose.header.frame_id, rclcpp::Duration::from_seconds(0.5));
+      tf2_buffer_->transform(detected, detected, pose.header.frame_id, tf2::durationFromSec(0.5));
     } catch (const tf2::TransformException & ex) {
       RCLCPP_WARN(node_->get_logger(), "Failed to transform detected dock pose: %s", ex.what());
       return false;
@@ -282,7 +282,7 @@ bool SimpleChargingDock::isDocked()
   base_pose.header.frame_id = base_frame_id_;
   base_pose.pose.orientation.w = 1.0;
   try {
-    tf2_buffer_->transform(base_pose, base_pose, dock_pose_.header.frame_id, rclcpp::Duration::from_seconds(0.5));
+    tf2_buffer_->transform(base_pose, base_pose, dock_pose_.header.frame_id, tf2::durationFromSec(0.5));
   } catch (const tf2::TransformException & ex) {
     return false;
   }
