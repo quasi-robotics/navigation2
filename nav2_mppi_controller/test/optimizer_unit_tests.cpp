@@ -17,7 +17,9 @@
 #include <thread>
 
 #include "gtest/gtest.h"
-#include "rclcpp/rclcpp.hpp"
+#include "rclcpp/parameter.hpp"
+#include "rclcpp/parameter_value.hpp"
+#include "rclcpp/utilities.hpp"
 #include "nav2_mppi_controller/optimizer.hpp"
 #include "nav2_costmap_2d/costmap_filters/filter_values.hpp"
 #include "nav2_ros_common/tf2_factories.hpp"
@@ -458,9 +460,12 @@ TEST(OptimizerTests, FallbackTests)
 
   // Test fallback logic, also tests getting set param retry_attempt_limit
   // Because retry set to 2, it should attempt soft resets 2x before throwing exception
-  // for hard reset
+  // for hard reset.
+  // A successful cycle on another optimizer must not reset this one.
   EXPECT_FALSE(optimizer_tester.fallbackWrapper(false));
   EXPECT_TRUE(optimizer_tester.fallbackWrapper(true));
+  OptimizerTester other_optimizer;
+  EXPECT_FALSE(other_optimizer.fallbackWrapper(false));
   EXPECT_TRUE(optimizer_tester.fallbackWrapper(true));
   EXPECT_THROW(optimizer_tester.fallbackWrapper(true), std::runtime_error);
 }

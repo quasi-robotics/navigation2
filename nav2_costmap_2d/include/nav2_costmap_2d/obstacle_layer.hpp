@@ -43,7 +43,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "rclcpp/rclcpp.hpp"
+#include "rclcpp/node_interfaces/node_parameters_interface.hpp"
+#include "rclcpp/parameter.hpp"
 #include "rclcpp/version.h"
 #include "laser_geometry/laser_geometry.hpp"
 #include "nav2_ros_common/tf2_factories.hpp"

@@ -19,6 +19,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -61,6 +62,19 @@ bool validateMsg(const double & num)
   return true;
 }
 
+bool validateMsgInfValid(const double & num)
+{
+  /*  @brief validate a numeric value
+   *  allowing positive infinity as a ranger sensor
+   *  'beam no-return' value.
+   *  @return true for finite values and positive infinity;
+   *  false for NaN and negative infinity.
+   */
+  if (std::isnan(num)) {return false;}
+  if (std::isinf(num) && num < 0.0) {return false;}
+  return true;
+}
+
 const double MAX_COVARIANCE = 1e9;
 const double MIN_COVARIANCE = 0;
 const double MIN_MAP_RESOLUTION = 1e-6;
@@ -84,10 +98,10 @@ bool validateMsg(const std::array<double, N> & msg)
   return true;
 }
 
-const int NSEC_PER_SEC = 1e9;  // 1 second = 1e9 nanosecond
+constexpr int NANOSECONDS_PER_SECOND = 1e9;
 bool validateMsg(const builtin_interfaces::msg::Time & msg)
 {
-  if (msg.nanosec >= NSEC_PER_SEC) {
+  if (msg.nanosec >= NANOSECONDS_PER_SECOND) {
     return false;                                      // invalid nanosec-stamp
   }
   return true;
@@ -188,11 +202,13 @@ bool validateMsg(const nav_msgs::msg::OccupancyGrid & msg)
     return false;
   }
 
-  uint32_t num_cells;
-  if (__builtin_mul_overflow(msg.info.width, msg.info.height, &num_cells)) {
+  if (msg.info.width != 0 &&
+    msg.info.height > std::numeric_limits<uint32_t>::max() / msg.info.width)
+  {
     // avoid overflow msg.info.width * msg.info.height in nav2_amcl::convertMap()
     return false;
   }
+  const uint32_t num_cells = msg.info.width * msg.info.height;
 
   // check logic
   if (msg.data.size() != static_cast<size_t>(num_cells)) {
@@ -223,8 +239,9 @@ bool validateMsg(const map_msgs::msg::OccupancyGridUpdate & msg)
     return false;
   }
 
-  uint32_t num_cells;
-  if (__builtin_mul_overflow(msg.width, msg.height, &num_cells)) {
+  if (msg.width != 0 &&
+    msg.height > std::numeric_limits<uint32_t>::max() / msg.width)
+  {
     // avoid overflow msg.width * msg.height in StaticLayer::incomingUpdate()
     return false;
   }
@@ -238,7 +255,7 @@ bool validateMsg(const sensor_msgs::msg::Range & msg)
   if (!validateMsg(static_cast<double>(msg.field_of_view))) {return false;}
   if (!validateMsg(static_cast<double>(msg.min_range))) {return false;}
   if (!validateMsg(static_cast<double>(msg.max_range))) {return false;}
-  if (!validateMsg(static_cast<double>(msg.range))) {return false;}
+  if (!validateMsgInfValid(static_cast<double>(msg.range))) {return false;}
 
   if (msg.field_of_view <= 0.0 || msg.field_of_view > MAX_RANGE_FIELD_OF_VIEW) {
     return false;
@@ -267,10 +284,12 @@ bool validateMsg(const nav2_msgs::msg::Costmap & msg)
   if (!validateMsg(msg.header)) {return false;}
   if (!validateMsg(msg.metadata)) {return false;}
 
-  uint32_t num_cells;
-  if (__builtin_mul_overflow(msg.metadata.size_x, msg.metadata.size_y, &num_cells)) {
+  if (msg.metadata.size_x != 0 &&
+    msg.metadata.size_y > std::numeric_limits<uint32_t>::max() / msg.metadata.size_x)
+  {
     return false;
   }
+  const uint32_t num_cells = msg.metadata.size_x * msg.metadata.size_y;
 
   if (msg.data.size() != static_cast<size_t>(num_cells)) {
     return false;
