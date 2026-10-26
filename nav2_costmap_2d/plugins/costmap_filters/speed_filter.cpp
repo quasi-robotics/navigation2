@@ -416,7 +416,7 @@ void SpeedFilter::process(
   if (!filter_mask_) {
     // Show warning message every 2 seconds to not litter an output
     RCLCPP_WARN_THROTTLE(
-      logger_, *(clock_), 2000,
+      logger_, *(clock_), 10000,
       "SpeedFilter: Filter mask was not received");
     return;
   }
@@ -450,12 +450,16 @@ void SpeedFilter::process(
     }
 
     if (!getSpeedLimitFromLookahead(pose, d_lookahead, mask_transform, speed_limit_)) {
-      RCLCPP_ERROR(logger_, "SpeedFilter: Failed to get speed limit from lookahead");
+      RCLCPP_DEBUG_THROTTLE(
+          logger_, *(clock_), 2000,
+          "SpeedFilter: Failed to get speed limit from lookahead");
       return;
     }
   } else {
     if (!getSpeedLimitAtPose(pose, mask_transform, speed_limit_)) {
-      RCLCPP_ERROR(logger_, "SpeedFilter: Failed to get speed limit at pose");
+      RCLCPP_DEBUG_THROTTLE(
+          logger_, *(clock_), 2000,
+          "SpeedFilter: Failed to get speed limit at pose");
       return;
     }
   }
