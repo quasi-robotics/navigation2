@@ -246,8 +246,8 @@ NavFn::setCostmap(const COSTTYPE * cmap, bool isROS, bool allow_unknown)
   COSTTYPE * cm = costarr;
   if (isROS) {  // ROS-type cost array
     for (int i = 0; i < ny; i++) {
-      int k = i * nx;
-      for (int j = 0; j < nx; j++, k++, cmap++, cm++) {
+      //int k = i * nx;
+      for (int j = 0; j < nx; j++, /*k++,*/ cmap++, cm++) {
         // This transforms the incoming cost values:
         // COST_OBS                 -> COST_OBS (incoming "lethal obstacle")
         // COST_OBS_ROS             -> COST_OBS (incoming "inscribed inflated obstacle")
@@ -268,8 +268,8 @@ NavFn::setCostmap(const COSTTYPE * cmap, bool isROS, bool allow_unknown)
     }
   } else {  // not a ROS map, just a PGM
     for (int i = 0; i < ny; i++) {
-      int k = i * nx;
-      for (int j = 0; j < nx; j++, k++, cmap++, cm++) {
+      //int k = i * nx;
+      for (int j = 0; j < nx; j++, /*k++,*/ cmap++, cm++) {
         *cm = COST_OBS;
         if (i < 7 || i > ny - 8 || j < 7 || j > nx - 8) {
           continue;  // don't do borders
