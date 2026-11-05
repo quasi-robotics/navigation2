@@ -53,6 +53,7 @@ void
 AsymmetricInflationLayer::onInitialize()
 {
   {
+    InflationLayer::onInitialize();
     double temp_tf_tol = 0.0;
 
     auto node = node_.lock();
