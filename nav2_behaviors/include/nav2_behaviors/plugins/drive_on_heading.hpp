@@ -27,6 +27,7 @@
 #include "nav2_msgs/action/back_up.hpp"
 #include "nav2_ros_common/node_utils.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
+#include "nav2_costmap_2d/cost_values.hpp"
 
 namespace nav2_behaviors
 {
@@ -220,7 +221,7 @@ protected:
         break;
       }
 
-      if (!this->local_collision_checker_->isCollisionFree(pose, fetch_data)) {
+      if (this->local_collision_checker_->scorePose(pose, fetch_data) == nav2_costmap_2d::LETHAL_OBSTACLE) {
         return false;
       }
       fetch_data = false;

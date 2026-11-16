@@ -21,6 +21,7 @@
 #include "nav2_behaviors/plugins/spin.hpp"
 #include "nav2_ros_common/node_utils.hpp"
 #include "nav2_util/geometry_utils.hpp"
+#include "nav2_costmap_2d/cost_values.hpp"
 
 using namespace std::chrono_literals;
 
@@ -166,7 +167,7 @@ bool Spin::isCollisionFree(
       break;
     }
 
-    if (!local_collision_checker_->isCollisionFree(pose, fetch_data)) {
+    if (local_collision_checker_->scorePose(pose, fetch_data) == nav2_costmap_2d::LETHAL_OBSTACLE) {
       RCLCPP_DEBUG(logger_, "Collision detected at %0.2f radians from current pose at pose: %f, %f; %f.", sim_position_change, pose.position.x, pose.position.y, new_theta);
       return false;
     }
