@@ -73,8 +73,8 @@ ResultStatus Spin::onRun(const std::shared_ptr<const SpinActionGoal> command)
 
   cmd_yaw_ = command->target_yaw;
   RCLCPP_INFO(
-    logger_, "Turning %0.2f for spin behavior.",
-    cmd_yaw_);
+    logger_, "Turning %0.2f for spin behavior. Current yaw: %0.2f in frame: %s",
+    cmd_yaw_, prev_yaw_, current_pose.header.frame_id.c_str());
 
   command_time_allowance_ = command->time_allowance;
   cmd_disable_collision_checks_ = command->disable_collision_checks;
@@ -167,6 +167,7 @@ bool Spin::isCollisionFree(
     }
 
     if (!local_collision_checker_->isCollisionFree(pose, fetch_data)) {
+      RCLCPP_DEBUG(logger_, "Collision detected at %0.2f radians from current pose at pose: %f, %f; %f.", sim_position_change, pose.position.x, pose.position.y, new_theta);
       return false;
     }
     fetch_data = false;
