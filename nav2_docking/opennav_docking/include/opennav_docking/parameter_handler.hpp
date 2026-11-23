@@ -50,6 +50,15 @@ struct Parameters
   double undock_linear_tolerance, undock_angular_tolerance;
   // Maximum number of times the robot will return to staging pose and retry docking
   int max_retries;
+  // Maximum number of times the robot will retry undocking after a control failure,
+  // e.g. an obstacle on the undock path
+  int max_undock_retries;
+  // Time (s) to wait before each undocking retry, so obstacles have a chance to move away
+  double undock_retry_delay;
+  // ClearEntireCostmap service to call before each docking/undocking retry; empty disables
+  std::string clear_costmap_service;
+  // Time (s) to wait after clearing the costmap, so it can re-populate
+  double clear_costmap_wait;
   // This is the root frame of the robot - typically "base_link"
   std::string base_frame;
   // This is our fixed frame for controlling - typically "odom"

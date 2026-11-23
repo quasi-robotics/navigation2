@@ -64,6 +64,10 @@ DockingServer::on_configure(const rclcpp_lifecycle::State & state)
   // Create composed utilities
   controller_ = std::make_unique<Controller>(node, tf2_buffer_, params_->base_frame);
   navigator_ = std::make_unique<Navigator>(node);
+  if (!params_->clear_costmap_service.empty()) {
+    clear_costmap_client_ = node->create_client<nav2_msgs::srv::ClearEntireCostmap>(
+      params_->clear_costmap_service, true);
+  }
   dock_db_ = std::make_unique<DockDatabase>(param_handler_->getMutex());
   if (!dock_db_->initialize(node, tf2_buffer_)) {
     on_cleanup(state);
@@ -127,6 +131,7 @@ DockingServer::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   navigator_.reset();
   curr_dock_type_.clear();
   controller_.reset();
+  clear_costmap_client_.reset();
   vel_publisher_.reset();
   params_->dock_backwards.reset();
   odom_sub_.reset();
@@ -172,6 +177,48 @@ bool DockingServer::checkAndWarnIfPreempted(
     return true;
   }
   return false;
+}
+
+template<typename ActionT>
+bool DockingServer::prepareRetry(
+  typename nav2::SimpleActionServer<ActionT>::SharedPtr & action_server,
+  const std::string & name, double delay)
+{
+  publishZeroVelocity();
+
+  // Sleep for some seconds, stopping early if cancelled/preempted
+  auto wait = [&](double seconds) {
+      nav2::Rate loop_rate(this, params_->controller_frequency);
+      const auto end = this->now() + rclcpp::Duration::from_seconds(seconds);
+      while (rclcpp::ok() && this->now() < end) {
+        if (checkAndWarnIfCancelled<ActionT>(action_server, name) ||
+          checkAndWarnIfPreempted<ActionT>(action_server, name))
+        {
+          return false;
+        }
+        loop_rate.sleep();
+      }
+      return rclcpp::ok();
+    };
+
+  if (!wait(delay)) {
+    return false;
+  }
+  if (!clear_costmap_client_) {
+    return true;
+  }
+
+  RCLCPP_INFO(
+    get_logger(), "Clearing costmap (%s) before retrying",
+    params_->clear_costmap_service.c_str());
+  try {
+    auto request = std::make_shared<nav2_msgs::srv::ClearEntireCostmap::Request>();
+    clear_costmap_client_->invoke(request, std::chrono::seconds(1), std::chrono::seconds(1));
+  } catch (const std::exception & e) {
+    // Retry anyway: the costmap may not need clearing
+    RCLCPP_WARN(get_logger(), "Failed to clear costmap: %s", e.what());
+  }
+  return wait(params_->clear_costmap_wait);
 }
 
 void DockingServer::dockRobot()
@@ -318,7 +365,9 @@ void DockingServer::dockRobot()
       }
 
       // Reset to staging pose to try again
-      if (!resetApproach(staging_pose, dock_backward)) {
+      if (!prepareRetry<DockRobot>(docking_action_server_, "dock_robot", 0.0) ||
+        !resetApproach(staging_pose, dock_backward))
+      {
         // Cancelled, preempted, or shutting down
         publishZeroVelocity();
         dock->plugin->stopDetectionProcess();
@@ -741,8 +790,9 @@ void DockingServer::undockRobot()
 
     // Control robot to staging pose
     rclcpp::Time loop_start = this->now();
+    int num_undock_retries = 0;
     while (rclcpp::ok()) {
-      // Stop if we exceed max duration
+      // Stop if we exceed max duration (retries included)
       auto timeout = rclcpp::Duration::from_seconds(goal->max_undocking_time);
       if (this->now() - loop_start > timeout) {
         throw opennav_docking_core::FailedToControl("Undocking timed out");
@@ -757,45 +807,66 @@ void DockingServer::undockRobot()
         return;
       }
 
-      // Don't control the robot until charging is disabled
-      if (dock->isCharger() && !dock->disableCharging()) {
-        loop_rate.sleep();
-        continue;
-      }
-
-      // Get command to approach staging pose
-      auto command = std::make_unique<geometry_msgs::msg::TwistStamped>();
-      command->header.stamp = now();
-      command->header.frame_id = params_->base_frame;
-
-      if (getCommandToPose(
-          command->twist, staging_pose, params_->undock_linear_tolerance,
-          params_->undock_angular_tolerance, false,
-          !dock_backward))
-      {
-        // Perform a 180º to the original staging pose
-        if (dock->shouldRotateToDock()) {
-          rotateToDock(staging_pose);
+      try {
+        // Don't control the robot until charging is disabled
+        if (dock->isCharger() && !dock->disableCharging()) {
+          loop_rate.sleep();
+          continue;
         }
 
-        // Have reached staging_pose
-        RCLCPP_INFO(get_logger(), "Robot has reached staging pose");
+        // Get command to approach staging pose
+        auto command = std::make_unique<geometry_msgs::msg::TwistStamped>();
+        command->header.stamp = now();
+        command->header.frame_id = params_->base_frame;
+
+        if (getCommandToPose(
+            command->twist, staging_pose, params_->undock_linear_tolerance,
+            params_->undock_angular_tolerance, false,
+            !dock_backward))
+        {
+          // Perform a 180º to the original staging pose
+          if (dock->shouldRotateToDock()) {
+            rotateToDock(staging_pose);
+          }
+
+          // Have reached staging_pose
+          RCLCPP_INFO(get_logger(), "Robot has reached staging pose");
+          vel_publisher_->publish(std::move(command));
+          if (!dock->isCharger() || dock->hasStoppedCharging()) {
+            RCLCPP_INFO(get_logger(), "Robot has undocked!");
+            result->success = true;
+            curr_dock_type_.clear();
+            publishZeroVelocity();
+            undocking_action_server_->succeeded_current(result);
+            return;
+          }
+          // Haven't stopped charging?
+          throw opennav_docking_core::FailedToControl("Failed to control off dock");
+        }
+
+        // Publish command and sleep
         vel_publisher_->publish(std::move(command));
-        if (!dock->isCharger() || dock->hasStoppedCharging()) {
-          RCLCPP_INFO(get_logger(), "Robot has undocked!");
-          result->success = true;
-          curr_dock_type_.clear();
+        loop_rate.sleep();
+      } catch (opennav_docking_core::FailedToControl & e) {
+        // E.g. an obstacle on the undock path: wait for it to move away and try again
+        if (++num_undock_retries > params_->max_undock_retries) {
+          if (params_->max_undock_retries > 0) {
+            RCLCPP_ERROR(get_logger(), "Failed to undock, all retries have been used");
+          }
+          throw;
+        }
+        RCLCPP_WARN(
+          get_logger(), "Undocking failed, will retry (%d/%d): %s",
+          num_undock_retries, params_->max_undock_retries, e.what());
+        if (!prepareRetry<UndockRobot>(
+            undocking_action_server_, "undock_robot", params_->undock_retry_delay))
+        {
+          // Cancelled, preempted, or shutting down
           publishZeroVelocity();
-          undocking_action_server_->succeeded_current(result);
+          undocking_action_server_->terminate_all(result);
           return;
         }
-        // Haven't stopped charging?
-        throw opennav_docking_core::FailedToControl("Failed to control off dock");
       }
-
-      // Publish command and sleep
-      vel_publisher_->publish(std::move(command));
-      loop_rate.sleep();
     }
   } catch (const tf2::TransformException & e) {
     result->error_msg = std::string("Transform error: ") + e.what();

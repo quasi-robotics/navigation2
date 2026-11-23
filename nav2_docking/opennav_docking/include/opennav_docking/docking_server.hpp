@@ -27,6 +27,8 @@
 #include "nav2_ros_common/lifecycle_node.hpp"
 #include "nav2_ros_common/node_utils.hpp"
 #include "nav2_ros_common/simple_action_server.hpp"
+#include "nav2_ros_common/service_client.hpp"
+#include "nav2_msgs/srv/clear_entire_costmap.hpp"
 #include "nav2_util/twist_publisher.hpp"
 #include "nav2_util/odometry_utils.hpp"
 #include "opennav_docking/controller.hpp"
@@ -174,6 +176,19 @@ public:
     const std::string & name);
 
   /**
+   * @brief Prepares a docking/undocking retry: stops the robot, waits delay seconds, then
+   * clears the costmap (if clear_costmap_service is set) and waits for it to re-populate
+   * @param action_server Action server to check for cancellation/preemption while waiting
+   * @param name Name of action to put in warning message
+   * @param delay Time (s) to wait before clearing the costmap
+   * @return False if cancelled, preempted or shutting down while waiting
+   */
+  template<typename ActionT>
+  bool prepareRetry(
+    typename nav2::SimpleActionServer<ActionT>::SharedPtr & action_server,
+    const std::string & name, double delay);
+
+  /**
    * @brief Configure member variables
    * @param state Reference to LifeCycle node state
    * @return SUCCESS or FAILURE
@@ -242,6 +257,7 @@ protected:
   std::unique_ptr<DockDatabase> dock_db_;
   std::unique_ptr<Navigator> navigator_;
   std::unique_ptr<Controller> controller_;
+  nav2::ServiceClient<nav2_msgs::srv::ClearEntireCostmap>::SharedPtr clear_costmap_client_;
   std::string curr_dock_type_;
 
   nav2::TransformBuffer::SharedPtr tf2_buffer_;

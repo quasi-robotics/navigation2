@@ -404,6 +404,9 @@ TEST(DockingServerTests, testDynamicParams)
       rclcpp::Parameter("fixed_frame", std::string("hi")),
       rclcpp::Parameter("transform_staleness_threshold", 0.7),
       rclcpp::Parameter("max_retries", 7),
+      rclcpp::Parameter("max_undock_retries", 4),
+      rclcpp::Parameter("undock_retry_delay", 3.5),
+      rclcpp::Parameter("clear_costmap_wait", 0.6),
       rclcpp::Parameter("rotation_angular_tolerance", 0.42)});
 
   rclcpp::spin_until_future_complete(node->get_node_base_interface(), results);
@@ -417,6 +420,9 @@ TEST(DockingServerTests, testDynamicParams)
   EXPECT_EQ(node->get_parameter("fixed_frame").as_string(), std::string("hi"));
   EXPECT_EQ(node->get_parameter("transform_staleness_threshold").as_double(), 0.7);
   EXPECT_EQ(node->get_parameter("max_retries").as_int(), 7);
+  EXPECT_EQ(node->get_parameter("max_undock_retries").as_int(), 4);
+  EXPECT_EQ(node->get_parameter("undock_retry_delay").as_double(), 3.5);
+  EXPECT_EQ(node->get_parameter("clear_costmap_wait").as_double(), 0.6);
   EXPECT_EQ(node->get_parameter("rotation_angular_tolerance").as_double(), 0.42);
 
   // Test setting invalid value
@@ -670,6 +676,75 @@ TEST(DockingServerTests, HandlesPluginStartFailure)
   auto result = future_result.get();
   EXPECT_EQ(result.code, rclcpp_action::ResultCode::ABORTED);
   EXPECT_EQ(result.result->error_code, DockRobot::Result::FAILED_TO_DETECT_DOCK);
+
+  node->on_deactivate(rclcpp_lifecycle::State());
+  node->on_cleanup(rclcpp_lifecycle::State());
+  node->shutdown();
+}
+
+TEST(DockingServerTests, UndockRetriesAfterControlFailures)
+{
+  auto node = std::make_shared<DockingServerRealTFShim>();
+  auto node_thread = nav2::NodeThread(node);
+  auto client_node = std::make_shared<rclcpp::Node>("test_client_undock_retries");
+
+  node->declare_parameter("controller.use_collision_detection", false);
+  node->declare_parameter("dock_plugins", std::vector<std::string>{"test_plugin"});
+  node->declare_parameter("test_plugin.plugin", "opennav_docking::TestFailureDock");
+  node->declare_parameter("exception_to_throw", "");
+  node->declare_parameter("dock_action_called", true);  // the robot is docked
+  // The first 2 undock control cycles fail, like a person standing on the undock path
+  node->declare_parameter("undock_control_failures", 2);
+  node->declare_parameter("max_undock_retries", 2);
+  node->declare_parameter("undock_retry_delay", 0.2);
+  node->declare_parameter("clear_costmap_service", "test_clear_costmap");
+  node->declare_parameter("clear_costmap_wait", 0.1);
+
+  int clear_calls = 0;
+  auto clear_service = client_node->create_service<nav2_msgs::srv::ClearEntireCostmap>(
+    "test_clear_costmap",
+    [&clear_calls](
+      const std::shared_ptr<nav2_msgs::srv::ClearEntireCostmap::Request>,
+      std::shared_ptr<nav2_msgs::srv::ClearEntireCostmap::Response>) {clear_calls++;});
+
+  node->on_configure(rclcpp_lifecycle::State());
+  geometry_msgs::msg::TransformStamped base_transform;
+  base_transform.header.frame_id = "odom";
+  base_transform.child_frame_id = "base_link";
+  base_transform.transform.rotation.w = 1.0;
+  node->getTfBuffer()->setTransform(base_transform, "test_authority", true);
+  node->on_activate(rclcpp_lifecycle::State());
+
+  auto client = rclcpp_action::create_client<UndockRobot>(client_node, "undock_robot");
+  ASSERT_TRUE(client->wait_for_action_server(2s));
+  auto undock = [&]() {
+      UndockRobot::Goal goal;
+      goal.dock_type = "test_plugin";
+      auto future_goal = client->async_send_goal(goal);
+      rclcpp::spin_until_future_complete(client_node, future_goal, 2s);
+      auto goal_handle = future_goal.get();
+      EXPECT_TRUE(goal_handle);
+      auto future_result = client->async_get_result(goal_handle);
+      EXPECT_EQ(
+        rclcpp::spin_until_future_complete(client_node, future_result, 10s),
+        rclcpp::FutureReturnCode::SUCCESS);
+      return future_result.get();
+    };
+
+  // 2 failures, 2 retries: undocks, after waiting and clearing the costmap before each retry
+  auto start = std::chrono::steady_clock::now();
+  auto result = undock();
+  EXPECT_EQ(result.code, rclcpp_action::ResultCode::SUCCEEDED);
+  EXPECT_TRUE(result.result->success);
+  EXPECT_EQ(clear_calls, 2);
+  EXPECT_GE(std::chrono::steady_clock::now() - start, 2 * (200ms + 100ms));
+
+  // 3 more failures, 2 retries: fails
+  node->set_parameter(rclcpp::Parameter("undock_control_failures", 5));
+  result = undock();
+  EXPECT_EQ(result.code, rclcpp_action::ResultCode::ABORTED);
+  EXPECT_EQ(result.result->error_code, UndockRobot::Result::FAILED_TO_CONTROL);
+  EXPECT_EQ(clear_calls, 4);
 
   node->on_deactivate(rclcpp_lifecycle::State());
   node->on_cleanup(rclcpp_lifecycle::State());

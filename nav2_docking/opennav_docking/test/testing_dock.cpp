@@ -48,7 +48,7 @@ public:
   virtual void deactivate() {}
 
   virtual geometry_msgs::msg::PoseStamped getStagingPose(
-    const geometry_msgs::msg::Pose &, const std::string &)
+    const geometry_msgs::msg::Pose & pose, const std::string & frame)
   {
     // Declared in test
     std::string exception;
@@ -72,7 +72,11 @@ public:
     } else if (exception == "exception") {
       throw std::exception();
     }
-    return geometry_msgs::msg::PoseStamped();
+    // Stage at the given pose, so undocking from it reaches staging at once
+    geometry_msgs::msg::PoseStamped staging_pose;
+    staging_pose.header.frame_id = frame;
+    staging_pose.pose = pose;
+    return staging_pose;
   }
 
   virtual bool getRefinedPose(geometry_msgs::msg::PoseStamped & pose, std::string)
@@ -101,6 +105,13 @@ public:
 
   virtual bool disableCharging()
   {
+    // Fail the first undock_control_failures control cycles, like an obstacle on the path
+    int undock_control_failures = 0;
+    node_->get_parameter_or("undock_control_failures", undock_control_failures, 0);
+    if (num_control_failures_ < undock_control_failures) {
+      num_control_failures_++;
+      throw opennav_docking_core::FailedToControl("Obstacle on the undock path");
+    }
     return true;
   }
 
@@ -123,6 +134,7 @@ public:
 
 protected:
   nav2::LifecycleNode::SharedPtr node_;
+  int num_control_failures_{0};
 };
 
 }  // namespace opennav_docking

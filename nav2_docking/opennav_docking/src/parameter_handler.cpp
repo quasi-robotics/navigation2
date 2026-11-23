@@ -44,6 +44,11 @@ ParameterHandler::ParameterHandler(
   params_.undock_angular_tolerance = node->declare_or_get_parameter("undock_angular_tolerance",
     0.05);
   params_.max_retries = node->declare_or_get_parameter("max_retries", 3);
+  params_.max_undock_retries = node->declare_or_get_parameter("max_undock_retries", 0);
+  params_.undock_retry_delay = node->declare_or_get_parameter("undock_retry_delay", 2.0);
+  params_.clear_costmap_service = node->declare_or_get_parameter(
+    "clear_costmap_service", std::string(""));
+  params_.clear_costmap_wait = node->declare_or_get_parameter("clear_costmap_wait", 1.0);
   params_.base_frame = node->declare_or_get_parameter("base_frame", std::string("base_link"));
   params_.fixed_frame = node->declare_or_get_parameter("fixed_frame", std::string("odom"));
   params_.transform_staleness_threshold =
@@ -128,6 +133,10 @@ ParameterHandler::updateParametersCallback(
         params_.rotation_angular_tolerance = parameter.as_double();
       } else if (param_name == "transform_staleness_threshold") {
         params_.transform_staleness_threshold = parameter.as_double();
+      } else if (param_name == "undock_retry_delay") {
+        params_.undock_retry_delay = parameter.as_double();
+      } else if (param_name == "clear_costmap_wait") {
+        params_.clear_costmap_wait = parameter.as_double();
       }
     } else if (param_type == ParameterType::PARAMETER_STRING) {
       if (param_name == "base_frame") {
@@ -138,6 +147,8 @@ ParameterHandler::updateParametersCallback(
     } else if (param_type == ParameterType::PARAMETER_INTEGER) {
       if (param_name == "max_retries") {
         params_.max_retries = parameter.as_int();
+      } else if (param_name == "max_undock_retries") {
+        params_.max_undock_retries = parameter.as_int();
       }
     }
   }
