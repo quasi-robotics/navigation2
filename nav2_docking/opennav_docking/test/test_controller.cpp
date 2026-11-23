@@ -69,6 +69,11 @@ public:
     dock_collision_threshold_ = tolerance;
   }
 
+  void setUndockCollisionTolerance(double tolerance)
+  {
+    undock_collision_threshold_ = tolerance;
+  }
+
 private:
   std::string fixed_frame_;
 };
@@ -258,6 +263,7 @@ TEST(ControllerTests, DynamicParameters) {
       rclcpp::Parameter("controller.projection_time", 9.0),
       rclcpp::Parameter("controller.simulation_time_step", 10.0),
       rclcpp::Parameter("controller.dock_collision_threshold", 11.0),
+      rclcpp::Parameter("controller.undock_collision_threshold", 0.1),
       rclcpp::Parameter("controller.start_collision_exemption", 0.06),
       rclcpp::Parameter("controller.rotate_to_heading_angular_vel", 12.0),
       rclcpp::Parameter("controller.rotate_to_heading_max_angular_accel", 13.0)});
@@ -278,6 +284,7 @@ TEST(ControllerTests, DynamicParameters) {
   EXPECT_EQ(node->get_parameter("controller.projection_time").as_double(), 9.0);
   EXPECT_EQ(node->get_parameter("controller.simulation_time_step").as_double(), 10.0);
   EXPECT_EQ(node->get_parameter("controller.dock_collision_threshold").as_double(), 11.0);
+  EXPECT_EQ(node->get_parameter("controller.undock_collision_threshold").as_double(), 0.1);
   EXPECT_EQ(node->get_parameter("controller.start_collision_exemption").as_double(), 0.06);
   EXPECT_EQ(node->get_parameter("controller.rotate_to_heading_angular_vel").as_double(), 12.0);
   EXPECT_EQ(
@@ -483,7 +490,7 @@ TEST(ControllerTests, CollisionCheckerUndockBackward) {
   EXPECT_FALSE(controller->isTrajectoryCollisionFree(staging_pose, false, true));
 
   // Set the collision tolerance to 0 to ensure all obstacles in the path are detected
-  controller->setCollisionTolerance(0.0);
+  controller->setUndockCollisionTolerance(0.0);
 
   // Set a dock in the costmap of 0.2x1.5m in front of the robot. The robot is docked
   // Now it should hit the dock
@@ -556,7 +563,7 @@ TEST(ControllerTests, CollisionCheckerUndockForward) {
   EXPECT_FALSE(controller->isTrajectoryCollisionFree(staging_pose, false, false));
 
   // Set the collision tolerance to 0 to ensure all obstacles in the path are detected
-  controller->setCollisionTolerance(0.0);
+  controller->setUndockCollisionTolerance(0.0);
 
   // Set a dock in the costmap of 0.2x1.5m at 0.5m behind the robot. The robot is docked
   // Now it should hit the dock
@@ -620,6 +627,68 @@ TEST(ControllerTests, CollisionCheckerStartExemption) {
   collision_tester->publishCostmap();
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   EXPECT_FALSE(controller->isTrajectoryCollisionFree(dock_pose, true, false));
+
+  collision_tester->deactivate();
+}
+
+TEST(ControllerTests, CollisionCheckerUndockThreshold) {
+  auto collision_tester = std::make_shared<TestCollisionChecker>("collision_test");
+  auto node = std::make_shared<nav2::LifecycleNode>("test");
+  auto tf = nav2::create_transform_buffer(node);
+  tf->setUsingDedicatedThread(true);  // One-thread broadcasting-listening model
+
+  nav2::declare_parameter_if_not_declared(
+    node, "controller.footprint_topic", rclcpp::ParameterValue("test_footprint"));
+  nav2::declare_parameter_if_not_declared(
+    node, "controller.costmap_topic", rclcpp::ParameterValue("test_costmap_raw"));
+  nav2::declare_parameter_if_not_declared(
+    node, "controller.projection_time", rclcpp::ParameterValue(10.0));
+  nav2::declare_parameter_if_not_declared(
+    node, "controller.simulation_time_step", rclcpp::ParameterValue(0.1));
+  nav2::declare_parameter_if_not_declared(
+    node, "controller.dock_collision_threshold", rclcpp::ParameterValue(1.8));
+
+  auto controller = std::make_unique<opennav_docking::ControllerFixture>(
+    node, tf, "test_base_frame", "test_base_frame");
+  collision_tester->configure();
+  collision_tester->activate();
+  auto executor_thread = std::make_unique<nav2::NodeThread>(node->get_node_base_interface());
+
+  // Undock forward to a staging pose 1.75m in front of the robot
+  auto staging_pose = collision_tester->setPose(1.75, 0.0, 0.0);
+  collision_tester->publishFootprint(0.45, 0.0, 0.0, "test_base_frame", node->now());
+
+  // An object between the robot and the staging pose
+  collision_tester->setRectangle(0.2, 0.2, 1.0, -0.1, nav2_costmap_2d::LETHAL_OBSTACLE);
+  collision_tester->publishCostmap();
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  // By default the undock threshold is the dock threshold, which hides the object
+  EXPECT_EQ(node->get_parameter("controller.undock_collision_threshold").as_double(), 1.8);
+  EXPECT_TRUE(controller->isTrajectoryCollisionFree(staging_pose, false, false));
+
+  // Without an undock threshold, the object is detected
+  controller->setUndockCollisionTolerance(0.0);
+  EXPECT_FALSE(controller->isTrajectoryCollisionFree(staging_pose, false, false));
+
+  // Docking still uses the dock threshold
+  EXPECT_TRUE(controller->isTrajectoryCollisionFree(staging_pose, true, false));
+
+  // The dock touching the rear of the robot blocks undocking without an exemption
+  collision_tester->clearCostmap();
+  collision_tester->setRectangle(0.2, 1.0, -0.55, -0.5, nav2_costmap_2d::LETHAL_OBSTACLE);
+  collision_tester->publishCostmap();
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  EXPECT_FALSE(controller->isTrajectoryCollisionFree(staging_pose, false, false));
+
+  // The start exemption lets the robot move away from the dock
+  controller->setStartCollisionExemption(0.15);
+  EXPECT_TRUE(controller->isTrajectoryCollisionFree(staging_pose, false, false));
+
+  // So does a small undock threshold, without the exemption
+  controller->setStartCollisionExemption(0.0);
+  controller->setUndockCollisionTolerance(0.15);
+  EXPECT_TRUE(controller->isTrajectoryCollisionFree(staging_pose, false, false));
 
   collision_tester->deactivate();
 }

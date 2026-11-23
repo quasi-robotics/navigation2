@@ -237,6 +237,7 @@ For debugging purposes, there are several publishers which can be used with RVIZ
 | controller.projection_time | Time to look ahead for collisions (s). | double | 5.0     |
 | controller.simulation_time_step | Time step for projections (s). | double | 0.1     |
 | controller.dock_collision_threshold | Distance (m) from the dock pose to ignore collisions. | double | 0.3     |
+| controller.undock_collision_threshold | Distance (m) from the robot's current pose to ignore collisions while undocking (and backing off after a failed approach). Set it to 0 to check the whole undock path and let `start_collision_exemption` clear the dock. | double | dock_collision_threshold |
 | controller.start_collision_exemption | Distance (m) from the robot's current pose within which collisions are ignored, so obstacles already touching the robot don't block it from moving away from them. Never applied to obstacles ahead of the robot in its direction of travel. Keep it about one costmap cell. | double | 0.0 |
 
 Note: `dock_plugins` and either `docks` or `dock_database` are required.

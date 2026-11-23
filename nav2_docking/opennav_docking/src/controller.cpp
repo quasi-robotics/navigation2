@@ -66,6 +66,8 @@ Controller::Controller(
     "controller.simulation_time_step", 0.1);
   dock_collision_threshold_ = node->declare_or_get_parameter(
     "controller.dock_collision_threshold", 0.3);
+  undock_collision_threshold_ = node->declare_or_get_parameter(
+    "controller.undock_collision_threshold", dock_collision_threshold_);
   start_collision_exemption_ = node->declare_or_get_parameter(
     "controller.start_collision_exemption", 0.0);
 
@@ -239,12 +241,14 @@ bool Controller::isTrajectoryCollisionFree(
     double dock_collision_distance = is_docking ?
       nav2_util::geometry_utils::euclidean_distance(target_pose, next_pose.pose) :
       std::hypot(next_pose.pose.position.x, next_pose.pose.position.y);
+    const double collision_threshold =
+      is_docking ? dock_collision_threshold_ : undock_collision_threshold_;
 
     try {
-      // If this distance is greater than the dock_collision_threshold, check for collisions,
+      // If this distance is greater than the (un)dock collision threshold, check for collisions,
       // except where the robot already is
       if (use_collision_detection_ &&
-        dock_collision_distance > dock_collision_threshold_ &&
+        dock_collision_distance > collision_threshold &&
         std::hypot(next_pose.pose.position.x, next_pose.pose.position.y) > exemption)
       {
         if(auto score = collision_checker_->scorePose(local_pose.pose, fetch_costmap); score == nav2_costmap_2d::LETHAL_OBSTACLE) {
@@ -352,6 +356,8 @@ Controller::updateParametersCallback(const std::vector<rclcpp::Parameter> & para
         simulation_time_step_ = parameter.as_double();
       } else if (param_name == "controller.dock_collision_threshold") {
         dock_collision_threshold_ = parameter.as_double();
+      } else if (param_name == "controller.undock_collision_threshold") {
+        undock_collision_threshold_ = parameter.as_double();
       } else if (param_name == "controller.start_collision_exemption") {
         start_collision_exemption_ = parameter.as_double();
       }

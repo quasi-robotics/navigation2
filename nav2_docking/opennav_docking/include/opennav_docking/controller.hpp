@@ -163,6 +163,9 @@ protected:
   double projection_time_;
   double simulation_time_step_;
   double dock_collision_threshold_;
+  // Like dock_collision_threshold_, but for undocking: poses closer than this to the robot
+  // aren't checked. Defaults to dock_collision_threshold_
+  double undock_collision_threshold_;
   double transform_tolerance_;
   nav2::TransformBuffer::SharedPtr tf2_buffer_;
   std::unique_ptr<nav2_costmap_2d::CostmapSubscriber> costmap_sub_;
