@@ -210,8 +210,8 @@ For debugging purposes, there are several publishers which can be used with RVIZ
 | undock_linear_tolerance      | Tolerance (m) to exit the undocking control loop at staging pose    | double |  0.05      |
 | undock_angular_tolerance     | Angular tolerance (rad) to exit undocking loop at staging pose    | double |  0.05      |
 | max_retries        | Maximum number of retries to attempt    | int |  3      |
-| max_undock_retries | Maximum number of undocking retries after a control failure (e.g. an obstacle on the undock path). Undocking stops at the goal's `max_undocking_time`, retries included | int | 0 |
-| undock_retry_delay | Time (s) to wait before each undocking retry, so obstacles have a chance to move away | double | 2.0 |
+| max_undock_retries | Maximum number of undocking retries after a control failure (e.g. an obstacle on the undock path). Also used when backing off to the staging pose between docking retries. Undocking stops at the goal's `max_undocking_time` and backing off at `dock_approach_timeout`, retries included | int | 0 |
+| undock_retry_delay | Time (s) to wait before each undocking (or backing off) retry, so obstacles have a chance to move away | double | 2.0 |
 | clear_costmap_service | `ClearEntireCostmap` service to call before each docking and undocking retry, e.g. `local_costmap/clear_entirely_local_costmap`. Empty disables clearing. Set at configure time only | string | "" |
 | clear_costmap_wait | Time (s) to wait after clearing the costmap, so it can re-populate before retrying | double | 1.0 |
 | base_frame        | Robot's base frame for control law   | string |  "base_link"      |

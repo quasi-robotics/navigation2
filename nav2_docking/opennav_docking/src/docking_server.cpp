@@ -649,6 +649,7 @@ bool DockingServer::resetApproach(
   nav2::Rate loop_rate(this, params_->controller_frequency);
   auto start = this->now();
   auto timeout = rclcpp::Duration::from_seconds(params_->dock_approach_timeout);
+  int num_reset_retries = 0;
   while (rclcpp::ok()) {
     publishDockingFeedback(DockRobot::Feedback::INITIAL_PERCEPTION);
 
@@ -663,12 +664,31 @@ bool DockingServer::resetApproach(
     auto command = std::make_unique<geometry_msgs::msg::TwistStamped>();
     command->header.stamp = now();
     command->header.frame_id = params_->base_frame;
-    if (getCommandToPose(
-        command->twist, fixed_staging_pose, params_->undock_linear_tolerance,
-        params_->undock_angular_tolerance, false,
-        !backward))
-    {
-      return true;
+    try {
+      if (getCommandToPose(
+          command->twist, fixed_staging_pose, params_->undock_linear_tolerance,
+          params_->undock_angular_tolerance, false,
+          !backward))
+      {
+        return true;
+      }
+    } catch (opennav_docking_core::FailedToControl & e) {
+      // Backing off the dock is an undock: retry like one, e.g. after an obstacle moves away
+      if (++num_reset_retries > params_->max_undock_retries) {
+        if (params_->max_undock_retries > 0) {
+          RCLCPP_ERROR(get_logger(), "Failed to back off the dock, all retries have been used");
+        }
+        throw;
+      }
+      RCLCPP_WARN(
+        get_logger(), "Backing off the dock failed, will retry (%d/%d): %s",
+        num_reset_retries, params_->max_undock_retries, e.what());
+      if (!prepareRetry<DockRobot>(
+          docking_action_server_, "dock_robot", params_->undock_retry_delay))
+      {
+        return false;
+      }
+      continue;
     }
     vel_publisher_->publish(std::move(command));
 

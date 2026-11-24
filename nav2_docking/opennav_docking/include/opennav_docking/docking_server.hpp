@@ -115,6 +115,7 @@ public:
 
   /**
    * @brief Reset the robot for another approach by controlling back to staging pose.
+   * Retries after control failures (e.g. an obstacle on the way) like undocking does.
    * @param staging_pose The target pose that will reset for another approach.
    * @param backward If true, the robot will drive backwards.
    * @returns True if reset is successful.
@@ -131,7 +132,7 @@ public:
    * @param backward If true, the robot will drive backwards.
    * @returns True if pose is reached.
    */
-  bool getCommandToPose(
+  virtual bool getCommandToPose(
     geometry_msgs::msg::Twist & cmd, const geometry_msgs::msg::PoseStamped & pose,
     double linear_tolerance, double angular_tolerance, bool is_docking, bool backward);
 

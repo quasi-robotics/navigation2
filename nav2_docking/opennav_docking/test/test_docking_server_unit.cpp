@@ -65,6 +65,28 @@ public:
   }
 };
 
+// Test shim whose first num_control_failures commands fail, like an obstacle on the path,
+// and whose next command reaches the target
+class DockingServerBlockedPathShim : public DockingServerShim
+{
+public:
+  DockingServerBlockedPathShim()
+  : DockingServerShim() {}
+
+  bool getCommandToPose(
+    geometry_msgs::msg::Twist &, const geometry_msgs::msg::PoseStamped &,
+    double, double, bool, bool) override
+  {
+    if (num_commands_++ < num_control_failures) {
+      throw opennav_docking_core::FailedToControl("Obstacle on the path");
+    }
+    return true;
+  }
+
+  int num_control_failures{0};
+  int num_commands_{0};
+};
+
 // Test shim to expose the TF2 buffer for injection
 class DockingServerTFShim : public DockingServerShim
 {
@@ -749,6 +771,46 @@ TEST(DockingServerTests, UndockRetriesAfterControlFailures)
   node->on_deactivate(rclcpp_lifecycle::State());
   node->on_cleanup(rclcpp_lifecycle::State());
   node->shutdown();
+}
+
+TEST(DockingServerTests, ResetApproachRetriesAfterControlFailures)
+{
+  auto node = std::make_shared<DockingServerBlockedPathShim>();
+  node->declare_parameter("dock_plugins", std::vector<std::string>{"test_plugin"});
+  node->declare_parameter("test_plugin.plugin", "opennav_docking::TestFailureDock");
+  node->declare_parameter("max_undock_retries", 2);
+  node->declare_parameter("undock_retry_delay", 0.1);
+  node->on_configure(rclcpp_lifecycle::State());
+  node->on_activate(rclcpp_lifecycle::State());
+  node->startActionClock();
+
+  geometry_msgs::msg::PoseStamped staging_pose;
+  staging_pose.header.frame_id = "odom";
+
+  // 2 failures, 2 retries: reaches the staging pose
+  node->num_control_failures = 2;
+  auto start = std::chrono::steady_clock::now();
+  EXPECT_TRUE(node->resetApproach(staging_pose, false));
+  EXPECT_EQ(node->num_commands_, 3);
+  EXPECT_GE(std::chrono::steady_clock::now() - start, 2 * 100ms);
+
+  // 3 failures, 2 retries: fails
+  node->num_commands_ = 0;
+  node->num_control_failures = 3;
+  EXPECT_THROW(
+    node->resetApproach(staging_pose, false), opennav_docking_core::FailedToControl);
+  EXPECT_EQ(node->num_commands_, 3);
+
+  // No retries by default
+  node->set_parameter(rclcpp::Parameter("max_undock_retries", 0));
+  node->num_commands_ = 0;
+  node->num_control_failures = 1;
+  EXPECT_THROW(
+    node->resetApproach(staging_pose, false), opennav_docking_core::FailedToControl);
+  EXPECT_EQ(node->num_commands_, 1);
+
+  node->on_deactivate(rclcpp_lifecycle::State());
+  node->on_cleanup(rclcpp_lifecycle::State());
 }
 
 }  // namespace opennav_docking
