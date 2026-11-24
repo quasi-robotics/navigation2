@@ -285,6 +285,8 @@ bool SimpleChargingDock::isDocked()
   double d = std::hypot(
     base_pose.pose.position.x - dock_pose_.pose.position.x,
     base_pose.pose.position.y - dock_pose_.pose.position.y);
+  if(is_stalled_ && d >= docking_threshold_)
+    RCLCPP_INFO(node_->get_logger(), "Stalled on approach, but not docked at distance=%f, threshold=%f", d, docking_threshold_);
   return d < docking_threshold_;
 }
 
